@@ -9,9 +9,34 @@
     <div class="register-container">
         <h1>Create an Account</h1>
         <form action="/register" method="post">
-            <input type="text" name="username" placeholder="Username" required>
-            <!-- Add additional fields as needed -->
+            <!-- Full Name field -->
+            <input type="text" name="full_name" placeholder="Full Name" required>
+
+            <!-- Username field -->
+            <input type="text" name="email" placeholder="Email" required>
+
+            <!-- Password field -->
             <input type="password" name="password" placeholder="Password" required>
+
+            <!-- Address field -->
+            <input type="text" name="address_1" placeholder="Street Address" required>
+
+            <!-- City field -->
+            <input type="text" name="city" placeholder="City" required>
+
+            <!-- State field -->
+            <input type="text" name="state" placeholder="State" required>
+
+            <input type="text" name="zip_code" placeholder="Zipcode" required>
+
+            <!-- Role field (could be a dropdown for selecting role) -->
+            <select name="role" required>
+                <option value="" disabled selected>Select Your Role</option>
+                <option value="volunteer">User</option>
+                <option value="admin">Admin</option>
+            </select>
+
+            <!-- Submit button -->
             <input type="submit" value="Register">
         </form>
     </div>

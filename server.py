@@ -16,6 +16,7 @@ def splash_screen():
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
+        # Retrieve form data
         email = request.form['email']
         password = request.form['password']
         full_name = request.form['full_name']
@@ -25,9 +26,16 @@ def register():
         state = request.form['state']
         zip_code = request.form['zip_code']
         role = request.form['role']
+        preferences = request.form.get('preferences', '')  # Handle preferences
+        
+        # Handle the selected skills
+        skills_list = request.form.getlist('skills[]')  # Get the list of selected skills
+        skills = ','.join(skills_list)  # Convert the list to a comma-separated string
 
+        # Hash the password
         hashed_password = generate_password_hash(password)
 
+        # Prepare user data including preferences and skills
         user_data = pd.DataFrame({
             'email': [email],
             'password': [hashed_password],
@@ -37,34 +45,20 @@ def register():
             'city': [city],
             'state': [state],
             'zip_code': [zip_code],
-            'role': [role]
+            'role': [role],
+            'preferences': [preferences],  # Add preferences to user_data
+            'skills': [skills]  # Store the comma-separated skills
         })
 
         try:
+            # Insert user data into Users table
             user_data.to_sql('Users', engine, if_exists='append', index=False)
-        except Exception:
+        except Exception as e:
+            # Log the exception for debugging
+            print(e)
             return "Error: A user with this email already exists."
 
-        user_id_query = "SELECT id FROM Users WHERE email = ?"
-        user_id = pd.read_sql(user_id_query, engine, params=[email]).iloc[0]['id']
-
-        skills = request.form.getlist('skills[]')
-        for skill_name in skills:
-            skill_id_query = "SELECT id FROM Skills WHERE skill_name = ?"
-            skill_df = pd.read_sql(skill_id_query, engine, params=[skill_name])
-            if skill_df.empty:
-                skill_data = pd.DataFrame({'skill_name': [skill_name]})
-                skill_data.to_sql('Skills', engine, if_exists='append', index=False)
-                skill_id = pd.read_sql(skill_id_query, engine, params=[skill_name]).iloc[0]['id']
-            else:
-                skill_id = skill_df.iloc[0]['id']
-
-            volunteer_skill_data = pd.DataFrame({
-                'user_id': [user_id],
-                'skill_id': [skill_id]
-            })
-            volunteer_skill_data.to_sql('Volunteer_Skills', engine, if_exists='append', index=False)
-
+        # Handle availability (same as before)
         start_date_str = request.form['start_date']
         end_date_str = request.form['end_date']
 
@@ -84,10 +78,10 @@ def register():
 
         availability_data.to_sql('Availability', engine, if_exists='append', index=False)
 
-        return redirect(url_for('splash_screen'))
+        return "Registration Successful!"
     else:
         return render_template('registration.html')
 
+
 if __name__ == '__main__':
     app.run(debug=True)
-

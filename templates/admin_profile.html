@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Profile</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eef2f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .profile-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .profile-container h1 {
+            margin-bottom: 30px;
+            font-size: 24px;
+            color: #333;
+            text-align: center;
+        }
+        .profile-container .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .profile-container button {
+            padding: 12px;
+            background-color: #5bc0de;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .profile-container button:hover {
+            background-color: #31b0d5;
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-container">
+        <h1>Welcome, {{ full_name }}!</h1>
+        <div class="button-group">
+            <form action="{{ url_for('add_event') }}">
+                <button type="submit">Add Event</button>
+            </form>
+            <form action="{{ url_for('manage_events') }}">
+                <button type="submit">Manage Events</button>
+            </form>
+            <form action="{{ url_for('show_profile_info') }}">
+                <button type="submit">Show Profile Info</button>
+            </form>
+            <form action="{{ url_for('logout') }}">
+                <button type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

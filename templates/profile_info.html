@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Your Profile Information</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eef2f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .profile-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            width: 500px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .profile-container h1 {
+            margin-bottom: 30px;
+            font-size: 24px;
+            color: #333;
+            text-align: center;
+        }
+        .profile-container p {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        .profile-container a {
+            display: block;
+            margin-top: 20px;
+            text-align: center;
+            color: #5bc0de;
+            text-decoration: none;
+        }
+        .profile-container a:hover {
+            text-decoration: underline;
+        }
+        .profile-container .back-button {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .profile-container .back-button button {
+            padding: 12px;
+            background-color: #5bc0de;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .profile-container .back-button button:hover {
+            background-color: #31b0d5;
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-container">
+        <h1>Your Profile Information</h1>
+        <p><strong>Full Name:</strong> {{ user['full_name'] }}</p>
+        <p><strong>Email:</strong> {{ user['email'] }}</p>
+        <p><strong>Address Line 1:</strong> {{ user['address_1'] }}</p>
+        {% if user['address_2'] %}
+            <p><strong>Address Line 2:</strong> {{ user['address_2'] }}</p>
+        {% endif %}
+        <p><strong>City:</strong> {{ user['city'] }}</p>
+        <p><strong>State:</strong> {{ user['state'] }}</p>
+        <p><strong>Zip Code:</strong> {{ user['zip_code'] }}</p>
+        <p><strong>Role:</strong> {{ user['role'] }}</p>
+        {% if user['preferences'] %}
+            <p><strong>Preferences:</strong> {{ user['preferences'] }}</p>
+        {% endif %}
+        {% if user['skills'] %}
+            <p><strong>Skills:</strong> {{ user['skills'] }}</p>
+        {% endif %}
+        <div class="back-button">
+            {% if user['role'] == 'admin' %}
+                <form action="{{ url_for('admin_profile') }}">
+            {% else %}
+                <form action="{{ url_for('volunteer_profile') }}">
+            {% endif %}
+                <button type="submit">Back to Profile</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -12,13 +12,13 @@
             <!-- Full Name field -->
             <input type="text" name="full_name" placeholder="Full Name" required>
 
-            <!-- Username field -->
-            <input type="text" name="email" placeholder="Email" required>
+            <!-- Email field -->
+            <input type="email" name="email" placeholder="Email" required>
 
             <!-- Password field -->
             <input type="password" name="password" placeholder="Password" required>
 
-            <!-- Address field -->
+            <!-- Address Line 1 field -->
             <input type="text" name="address_1" placeholder="Street Address" required>
 
             <!-- Address Line 2 field -->
@@ -82,13 +82,36 @@
                 <option value="WY">Wyoming (WY)</option>
             </select>
 
-            <input type="text" name="zip_code" placeholder="Zipcode" required>
+            <!-- Zip Code field with validation -->
+            <input
+                type="text"
+                name="zip_code"
+                placeholder="Zipcode"
+                required
+                pattern="\d{5,}"
+                title="Please enter at least 5 digits for the zip code"
+            >
 
-            <!-- Role field (could be a dropdown for selecting role) -->
+            <!-- Role field -->
             <select name="role" required>
                 <option value="" disabled selected>Select Your Role</option>
-                <option value="volunteer">User</option>
+                <option value="volunteer">Volunteer</option>
                 <option value="admin">Admin</option>
+            </select>
+
+            <!-- Skills field -->
+            <label for="skills">Skills (for Volunteers):</label>
+            <select name="skills[]" id="skills" multiple>
+                <option value="first_aid">First Aid</option>
+                <option value="cpr">CPR Certification</option>
+                <option value="construction">Construction</option>
+                <option value="counseling">Counseling</option>
+                <option value="cooking">Cooking</option>
+                <option value="teaching">Teaching</option>
+                <option value="it_support">IT Support</option>
+                <option value="event_planning">Event Planning</option>
+                <option value="n/a">N/A</option>
+                <!-- Add more skills as needed -->
             </select>
 
             <!-- Availability Start Date field -->

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Events</title>
+    <style>
+        /* Basic styling for the table */
+        table {
+            width: 90%;
+            margin: auto;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #5bc0de;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-buttons form {
+            display: inline;
+        }
+
+        .action-buttons button {
+            padding: 8px 12px;
+            background-color: #5bc0de;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .action-buttons button.edit {
+            background-color: #5cb85c;
+        }
+
+        .action-buttons button.delete {
+            background-color: #d9534f;
+        }
+
+        .action-buttons button:hover {
+            opacity: 0.9;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .add-event-button {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            text-align: center;
+        }
+
+        .add-event-button a {
+            padding: 12px;
+            background-color: #5cb85c;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .add-event-button a:hover {
+            background-color: #4cae4c;
+        }
+    </style>
+</head>
+<body>
+    <h1>Manage Events</h1>
+    <div class="add-event-button">
+        <a href="{{ url_for('add_event') }}">Add New Event</a>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Event Name</th>
+                <th>Description</th>
+                <th>Location</th>
+                <th>Required Skills</th>
+                <th>Urgency</th>
+                <th>Event Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in events %}
+            <tr>
+                <td>{{ event.event_name }}</td>
+                <td>{{ event.event_description }}</td>
+                <td>{{ event.location }}</td>
+                <td>{{ event.required_skills }}</td>
+                <td>{{ event.urgency }}</td>
+                <td>{{ event.event_date }}</td>
+                <td>
+                    <div class="action-buttons">
+                        <form action="{{ url_for('edit_event', event_id=event.id) }}" method="get">
+                            <button type="submit" class="edit">Edit</button>
+                        </form>
+                        <form action="{{ url_for('delete_event', event_id=event.id) }}" method="post" onsubmit="return confirm('Are you sure you want to delete this event?');">
+                            <button type="submit" class="delete">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

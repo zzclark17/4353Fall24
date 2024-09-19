@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Event</title>
+    <style>
+        /* Styling similar to add_event.html */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eef2f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .event-form-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .event-form-container h1 {
+            margin-bottom: 30px;
+            font-size: 24px;
+            color: #333;
+            text-align: center;
+        }
+        .event-form-container label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        .event-form-container input[type="text"],
+        .event-form-container textarea,
+        .event-form-container select,
+        .event-form-container input[type="date"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .event-form-container select[multiple] {
+            height: auto;
+        }
+        .event-form-container input[type="submit"] {
+            width: 100%;
+            padding: 12px;
+            background-color: #5bc0de;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .event-form-container input[type="submit"]:hover {
+            background-color: #31b0d5;
+        }
+    </style>
+</head>
+<body>
+    <div class="event-form-container">
+        <h1>Edit Event</h1>
+        <form action="{{ url_for('edit_event', event_id=event.id) }}" method="post">
+            <!-- Event Name -->
+            <label for="event_name">Event Name (required, max 100 characters):</label>
+            <input type="text" id="event_name" name="event_name" maxlength="100" value="{{ event.event_name }}" required>
+            
+            <!-- Event Description -->
+            <label for="event_description">Event Description (required):</label>
+            <textarea id="event_description" name="event_description" rows="4" required>{{ event.event_description }}</textarea>
+            
+            <!-- Location -->
+            <label for="location">Location (required):</label>
+            <textarea id="location" name="location" rows="2" required>{{ event.location }}</textarea>
+            
+            <!-- Required Skills -->
+            <label for="required_skills">Required Skills (required):</label>
+            <select id="required_skills" name="required_skills[]" multiple required>
+                {% set selected_skills = event.required_skills.split(',') %}
+                {% for skill in ['cpr', 'first_aid', 'construction', 'it_support', 'cooking', 'childcare'] %}
+                <option value="{{ skill }}" {% if skill in selected_skills %}selected{% endif %}>{{ skill.replace('_', ' ').title() }}</option>
+                {% endfor %}
+            </select>
+            
+            <!-- Urgency -->
+            <label for="urgency">Urgency (required):</label>
+            <select id="urgency" name="urgency" required>
+                <option value="">--Select Urgency--</option>
+                {% for level in ['low', 'moderate', 'high', 'critical'] %}
+                <option value="{{ level }}" {% if event.urgency.lower() == level %}selected{% endif %}>{{ level.title() }}</option>
+                {% endfor %}
+            </select>
+            
+            <!-- Event Date -->
+            <label for="event_date">Event Date (required):</label>
+            <input type="date" id="event_date" name="event_date" value="{{ event.event_date }}" required>
+            
+            <!-- Submit Button -->
+            <input type="submit" value="Update Event">
+        </form>
+    </div>
+</body>
+</html>

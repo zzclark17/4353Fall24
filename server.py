@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
-# Setup the connection to your SQLite database
 engine = create_engine('sqlite:///database.db')
 
 @app.route("/")
@@ -29,11 +28,14 @@ def register():
         start_date_str = request.form['start_date']
         end_date_str = request.form['end_date']
         preferences = request.form.get('preferences', '')
-        
         skills_list = request.form.getlist('skills[]')
         skills = ','.join(skills_list)
-
         hashed_password = generate_password_hash(password)
+
+        existing_user_query = "SELECT * FROM Users WHERE email = :email"
+        existing_user_df = pd.read_sql(existing_user_query, engine, params={'email': email})
+        if not existing_user_df.empty:
+            return "Error: A user with this email already exists."
 
         user_data = pd.DataFrame({
             'email': [email],
@@ -46,20 +48,16 @@ def register():
             'zip_code': [zip_code],
             'role': [role],
             'preferences': [preferences],
-            'start_date_str': [availability_start],
-            'end_date_str': [availability_end],
+            'availability_start': [start_date_str],
+            'availability_end': [end_date_str],
             'skills': [skills]
         })
 
-        try:
-            user_data.to_sql('Users', engine, if_exists='append', index=False)
-        except Exception as e:
-            print(e)
-            return "Error: A user with this email already exists."
+        user_data.to_sql('Users', engine, if_exists='append', index=False)
 
-        
-        start_date_str = request.form['start_date']
-        end_date_str = request.form['end_date']
+        new_user_query = "SELECT id FROM Users WHERE email = :email"
+        new_user_df = pd.read_sql(new_user_query, engine, params={'email': email})
+        user_id = new_user_df['id'].iloc[0]
 
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
@@ -71,7 +69,7 @@ def register():
         availability_list = [start_date + timedelta(days=i) for i in range(delta.days + 1)]
 
         availability_data = pd.DataFrame({
-            'user_data': [user_data] * len(availability_list),
+            'user_id': [user_id] * len(availability_list),
             'available_date': availability_list
         })
 
@@ -95,7 +93,7 @@ def login():
     user = user_df.iloc[0]
 
     if check_password_hash(user['password'], password):
-        session['user_id'] = int(user['id']) 
+        session['user_id'] = int(user['id'])
         session['role'] = user['role']
         session['full_name'] = user['full_name']
 
@@ -168,13 +166,10 @@ def manage_events():
     if 'user_id' not in session or session.get('role') != 'admin':
         return redirect(url_for('splash_screen'))
 
-    # Fetch events from the database
     events_query = "SELECT * FROM Events"
     events_df = pd.read_sql(events_query, engine)
-    events = events_df.to_dict(orient='records')
 
-    return render_template('manage_events.html', events=events)
-
+    return render_template('manage_events.html', events=events_df)
 
 @app.route('/show_profile_info')
 def show_profile_info():
@@ -183,8 +178,10 @@ def show_profile_info():
 
     user_query = "SELECT * FROM Users WHERE id = :user_id"
     user_df = pd.read_sql(user_query, engine, params={'user_id': session['user_id']})
+    
     if user_df.empty:
         return "User not found."
+    
     user = user_df.iloc[0]
     return render_template('profile_info.html', user=user)
 

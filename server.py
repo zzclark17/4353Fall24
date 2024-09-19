@@ -133,7 +133,6 @@ def add_event():
         return redirect(url_for('splash_screen'))
 
     if request.method == 'POST':
-        # Retrieve form data
         event_name = request.form['event_name']
         event_description = request.form['event_description']
         location = request.form['location']
@@ -142,10 +141,8 @@ def add_event():
         urgency = request.form['urgency']
         event_date_str = request.form['event_date']
 
-        # Convert event_date to date object
         event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
 
-        # Prepare event data
         event_data = pd.DataFrame({
             'event_name': [event_name],
             'event_description': [event_description],
@@ -157,7 +154,6 @@ def add_event():
         })
 
         try:
-            # Insert event data into Events table
             event_data.to_sql('Events', engine, if_exists='append', index=False)
         except Exception as e:
             print(e)
@@ -216,10 +212,7 @@ def edit_event(event_id):
         urgency = request.form['urgency']
         event_date_str = request.form['event_date']
 
-        # Convert event_date to date object
         event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
-
-        # Update the event in the database
         update_query = """
             UPDATE Events
             SET event_name = :event_name,
@@ -276,7 +269,6 @@ def match_volunteers(event_id):
     if 'user_id' not in session or session.get('role') != 'admin':
         return redirect(url_for('splash_screen'))
 
-    # Fetch the event details
     event_query = "SELECT * FROM Events WHERE id = :event_id"
     event_df = pd.read_sql(event_query, engine, params={'event_id': event_id})
 
@@ -285,11 +277,9 @@ def match_volunteers(event_id):
 
     event = event_df.iloc[0]
 
-    # Get required skills and event date
     required_skills = set(event['required_skills'].split(','))
     event_date = event['event_date']
 
-    # Fetch volunteers who have matching skills
     users_query = "SELECT * FROM Users WHERE role = 'volunteer'"
     users_df = pd.read_sql(users_query, engine)
 
@@ -309,7 +299,6 @@ def match_volunteers(event_id):
                 matching_volunteers.append(user)
 
     if request.method == 'POST':
-        # Assign selected volunteers to the event
         selected_volunteer_ids = request.form.getlist('volunteer_ids')
         assignment_data = pd.DataFrame({
             'event_id': [event_id] * len(selected_volunteer_ids),
@@ -323,7 +312,6 @@ def match_volunteers(event_id):
         return redirect(url_for('manage_events'))
 
     else:
-        # Convert matching volunteers to list of dicts
         volunteers = [vol.to_dict() for vol in matching_volunteers]
         return render_template('match_volunteers.html', event=event, volunteers=volunteers)
 

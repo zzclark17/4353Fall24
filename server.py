@@ -67,10 +67,11 @@ def register():
 
         delta = end_date - start_date
         availability_list = [start_date + timedelta(days=i) for i in range(delta.days + 1)]
+        availability_list_str = [date.strftime('%Y-%m-%d') for date in availability_list]
 
         availability_data = pd.DataFrame({
-            'user_id': [user_id] * len(availability_list),
-            'available_date': availability_list
+            'user_id': [user_id] * len(availability_list_str),
+            'available_date': availability_list_str
         })
 
         availability_data.to_sql('Availability', engine, if_exists='append', index=False)
@@ -169,7 +170,10 @@ def manage_events():
     events_query = "SELECT * FROM Events"
     events_df = pd.read_sql(events_query, engine)
 
-    return render_template('manage_events.html', events=events_df)
+    # Convert DataFrame to a list of dictionaries
+    events = events_df.to_dict(orient='records')
+
+    return render_template('manage_events.html', events=events)
 
 @app.route('/show_profile_info')
 def show_profile_info():
@@ -190,7 +194,6 @@ def edit_event(event_id):
     if 'user_id' not in session or session.get('role') != 'admin':
         return redirect(url_for('splash_screen'))
 
-    # Fetch the event from the database
     event_query = "SELECT * FROM Events WHERE id = :event_id"
     event_df = pd.read_sql(event_query, engine, params={'event_id': event_id})
 
@@ -200,7 +203,6 @@ def edit_event(event_id):
     event = event_df.iloc[0]
 
     if request.method == 'POST':
-        # Retrieve form data
         event_name = request.form['event_name']
         event_description = request.form['event_description']
         location = request.form['location']
@@ -241,7 +243,6 @@ def edit_event(event_id):
         return redirect(url_for('manage_events'))
 
     else:
-        # Convert the event Series to a dictionary
         event_dict = event.to_dict()
         return render_template('edit_event.html', event=event_dict)
 
@@ -274,24 +275,31 @@ def match_volunteers(event_id):
 
     event = event_df.iloc[0]
 
-    required_skills = set(event['required_skills'].split(','))
+    required_skills = set(event['required_skills'].split(',')) if event['required_skills'] else set()
     event_date = event['event_date']
+
 
     users_query = "SELECT * FROM Users WHERE role = 'volunteer'"
     users_df = pd.read_sql(users_query, engine)
 
+    if 'skills' not in users_df.columns:
+        users_df['skills'] = ''
+
     matching_volunteers = []
 
     for idx, user in users_df.iterrows():
-        user_skills = set(user['skills'].split(',')) if user['skills'] else set()
-        # Check if volunteer has all required skills
-        if required_skills.issubset(user_skills):
-            # Check availability
+        user_skills = set()
+
+        if pd.notnull(user.get('skills')):
+            user_skills = set(user['skills'].split(','))
+
+        if not required_skills or required_skills.issubset(user_skills):
             availability_query = """
                 SELECT * FROM Availability
                 WHERE user_id = :user_id AND available_date = :event_date
             """
             availability_df = pd.read_sql(availability_query, engine, params={'user_id': user['id'], 'event_date': event_date})
+
             if not availability_df.empty:
                 matching_volunteers.append(user)
 

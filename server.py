@@ -28,7 +28,6 @@ def register():
         role = request.form['role']
         preferences = request.form.get('preferences', '')
         
-        # Handle the selected skills
         skills_list = request.form.getlist('skills[]')
         skills = ','.join(skills_list)
 
@@ -169,6 +168,11 @@ def manage_events():
     if 'user_id' not in session or session.get('role') != 'admin':
         return redirect(url_for('splash_screen'))
 
+    # Fetch events from the database
+    events_query = "SELECT * FROM Events"
+    events_df = pd.read_sql(events_query, engine)
+    events = events_df.to_dict(orient='records')
+
     return render_template('manage_events.html', events=events)
 
 
@@ -183,6 +187,85 @@ def show_profile_info():
         return "User not found."
     user = user_df.iloc[0]
     return render_template('profile_info.html', user=user)
+
+@app.route('/edit_event/<int:event_id>', methods=['GET', 'POST'])
+def edit_event(event_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('splash_screen'))
+
+    # Fetch the event from the database
+    event_query = "SELECT * FROM Events WHERE id = :event_id"
+    event_df = pd.read_sql(event_query, engine, params={'event_id': event_id})
+
+    if event_df.empty:
+        return "Event not found."
+
+    event = event_df.iloc[0]
+
+    if request.method == 'POST':
+        # Retrieve form data
+        event_name = request.form['event_name']
+        event_description = request.form['event_description']
+        location = request.form['location']
+        required_skills_list = request.form.getlist('required_skills[]')
+        required_skills = ','.join(required_skills_list)
+        urgency = request.form['urgency']
+        event_date_str = request.form['event_date']
+
+        # Convert event_date to date object
+        event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
+
+        # Update the event in the database
+        update_query = """
+            UPDATE Events
+            SET event_name = :event_name,
+                event_description = :event_description,
+                location = :location,
+                required_skills = :required_skills,
+                urgency = :urgency,
+                event_date = :event_date
+            WHERE id = :event_id
+        """
+
+        params = {
+            'event_name': event_name,
+            'event_description': event_description,
+            'location': location,
+            'required_skills': required_skills,
+            'urgency': urgency,
+            'event_date': event_date,
+            'event_id': event_id
+        }
+
+        try:
+            with engine.begin() as conn:
+                conn.execute(update_query, params)
+        except Exception as e:
+            print(e)
+            return "Error: Failed to update event."
+
+        return redirect(url_for('manage_events'))
+
+    else:
+        # Convert the event Series to a dictionary
+        event_dict = event.to_dict()
+        return render_template('edit_event.html', event=event_dict)
+
+
+@app.route('/delete_event/<int:event_id>', methods=['POST'])
+def delete_event(event_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('splash_screen'))
+
+    delete_query = "DELETE FROM Events WHERE id = :event_id"
+    try:
+        with engine.begin() as conn:
+            conn.execute(delete_query, {'event_id': event_id})
+    except Exception as e:
+        print(e)
+        return "Error: Failed to delete event."
+
+    return redirect(url_for('manage_events'))
 
 
 

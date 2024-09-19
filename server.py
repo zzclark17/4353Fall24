@@ -26,6 +26,8 @@ def register():
         state = request.form['state']
         zip_code = request.form['zip_code']
         role = request.form['role']
+        start_date_str = request.form['start_date']
+        end_date_str = request.form['end_date']
         preferences = request.form.get('preferences', '')
         
         skills_list = request.form.getlist('skills[]')
@@ -43,8 +45,10 @@ def register():
             'state': [state],
             'zip_code': [zip_code],
             'role': [role],
-            'preferences': [preferences],  # Add preferences to user_data
-            'skills': [skills]  # Store the comma-separated skills
+            'preferences': [preferences],
+            'start_date_str': [availability_start],
+            'end_date_str': [availability_end],
+            'skills': [skills]
         })
 
         try:

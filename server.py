@@ -5,13 +5,26 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
+
+
+@app.route('/')
+def home():
+    return "Hello, Replit!"
+
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=8080)
+
+app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
 engine = create_engine('sqlite:///database.db')
 
+
 @app.route("/")
 def splash_screen():
     return render_template('index.html')
+
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
@@ -33,7 +46,9 @@ def register():
         hashed_password = generate_password_hash(password)
 
         existing_user_query = "SELECT * FROM Users WHERE email = :email"
-        existing_user_df = pd.read_sql(existing_user_query, engine, params={'email': email})
+        existing_user_df = pd.read_sql(existing_user_query,
+                                       engine,
+                                       params={'email': email})
         if not existing_user_df.empty:
             return "Error: A user with this email already exists."
 
@@ -56,7 +71,9 @@ def register():
         user_data.to_sql('Users', engine, if_exists='append', index=False)
 
         new_user_query = "SELECT id FROM Users WHERE email = :email"
-        new_user_df = pd.read_sql(new_user_query, engine, params={'email': email})
+        new_user_df = pd.read_sql(new_user_query,
+                                  engine,
+                                  params={'email': email})
         user_id = new_user_df['id'].iloc[0]
 
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
@@ -66,19 +83,28 @@ def register():
             return "Error: End date cannot be before start date."
 
         delta = end_date - start_date
-        availability_list = [start_date + timedelta(days=i) for i in range(delta.days + 1)]
-        availability_list_str = [date.strftime('%Y-%m-%d') for date in availability_list]
+        availability_list = [
+            start_date + timedelta(days=i) for i in range(delta.days + 1)
+        ]
+        availability_list_str = [
+            date.strftime('%Y-%m-%d') for date in availability_list
+        ]
 
         availability_data = pd.DataFrame({
             'user_id': [user_id] * len(availability_list_str),
-            'available_date': availability_list_str
+            'available_date':
+            availability_list_str
         })
 
-        availability_data.to_sql('Availability', engine, if_exists='append', index=False)
+        availability_data.to_sql('Availability',
+                                 engine,
+                                 if_exists='append',
+                                 index=False)
 
         return "Registration Successful!"
     else:
         return render_template('registration.html')
+
 
 @app.route("/login", methods=['POST'])
 def login():
@@ -86,7 +112,9 @@ def login():
     password = request.form['password']
 
     user_query = "SELECT * FROM Users WHERE email = :email"
-    user_df = pd.read_sql(user_query, engine, params={'email': email_or_username})
+    user_df = pd.read_sql(user_query,
+                          engine,
+                          params={'email': email_or_username})
 
     if user_df.empty:
         return "Invalid username or password."
@@ -111,14 +139,18 @@ def admin_profile():
     if 'user_id' not in session or session.get('role') != 'admin':
         return redirect(url_for('splash_screen'))
 
-    return render_template('admin_profile.html', full_name=session.get('full_name'))
+    return render_template('admin_profile.html',
+                           full_name=session.get('full_name'))
+
 
 @app.route('/volunteer_profile')
 def volunteer_profile():
     if 'user_id' not in session or session.get('role') != 'volunteer':
         return redirect(url_for('splash_screen'))
 
-    return render_template('volunteer_profile.html', full_name=session.get('full_name'))
+    return render_template('volunteer_profile.html',
+                           full_name=session.get('full_name'))
+
 
 @app.route('/logout')
 def logout():
@@ -153,7 +185,10 @@ def add_event():
         })
 
         try:
-            event_data.to_sql('Events', engine, if_exists='append', index=False)
+            event_data.to_sql('Events',
+                              engine,
+                              if_exists='append',
+                              index=False)
         except Exception as e:
             print(e)
             return "Error: Failed to create event."
@@ -161,6 +196,7 @@ def add_event():
         return redirect(url_for('admin_profile'))
     else:
         return render_template('add_event.html')
+
 
 @app.route('/manage_events')
 def manage_events():
@@ -175,19 +211,23 @@ def manage_events():
 
     return render_template('manage_events.html', events=events)
 
+
 @app.route('/show_profile_info')
 def show_profile_info():
     if 'user_id' not in session:
         return redirect(url_for('splash_screen'))
 
     user_query = "SELECT * FROM Users WHERE id = :user_id"
-    user_df = pd.read_sql(user_query, engine, params={'user_id': session['user_id']})
-    
+    user_df = pd.read_sql(user_query,
+                          engine,
+                          params={'user_id': session['user_id']})
+
     if user_df.empty:
         return "User not found."
-    
+
     user = user_df.iloc[0]
     return render_template('profile_info.html', user=user)
+
 
 @app.route('/edit_event/<int:event_id>', methods=['GET', 'POST'])
 def edit_event(event_id):
@@ -262,6 +302,7 @@ def delete_event(event_id):
 
     return redirect(url_for('manage_events'))
 
+
 @app.route('/match_volunteers/<int:event_id>', methods=['GET', 'POST'])
 def match_volunteers(event_id):
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -275,9 +316,9 @@ def match_volunteers(event_id):
 
     event = event_df.iloc[0]
 
-    required_skills = set(event['required_skills'].split(',')) if event['required_skills'] else set()
+    required_skills = set(event['required_skills'].split(
+        ',')) if event['required_skills'] else set()
     event_date = event['event_date']
-
 
     users_query = "SELECT * FROM Users WHERE role = 'volunteer'"
     users_df = pd.read_sql(users_query, engine)
@@ -298,7 +339,12 @@ def match_volunteers(event_id):
                 SELECT * FROM Availability
                 WHERE user_id = :user_id AND available_date = :event_date
             """
-            availability_df = pd.read_sql(availability_query, engine, params={'user_id': user['id'], 'event_date': event_date})
+            availability_df = pd.read_sql(availability_query,
+                                          engine,
+                                          params={
+                                              'user_id': user['id'],
+                                              'event_date': event_date
+                                          })
 
             if not availability_df.empty:
                 matching_volunteers.append(user)
@@ -307,10 +353,14 @@ def match_volunteers(event_id):
         selected_volunteer_ids = request.form.getlist('volunteer_ids')
         assignment_data = pd.DataFrame({
             'event_id': [event_id] * len(selected_volunteer_ids),
-            'user_id': selected_volunteer_ids
+            'user_id':
+            selected_volunteer_ids
         })
         try:
-            assignment_data.to_sql('VolunteerAssignments', engine, if_exists='append', index=False)
+            assignment_data.to_sql('VolunteerAssignments',
+                                   engine,
+                                   if_exists='append',
+                                   index=False)
         except Exception as e:
             print(e)
             return "Error: Failed to assign volunteers."
@@ -318,7 +368,9 @@ def match_volunteers(event_id):
 
     else:
         volunteers = [vol.to_dict() for vol in matching_volunteers]
-        return render_template('match_volunteers.html', event=event, volunteers=volunteers)
+        return render_template('match_volunteers.html',
+                               event=event,
+                               volunteers=volunteers)
 
 
 if __name__ == '__main__':

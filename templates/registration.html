@@ -2,33 +2,91 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register</title>
-    <!-- Include your CSS styles here -->
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef2f3;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+            margin: 0;
+            overflow-y: auto; /* Add vertical scrolling if needed */
+        }
+        .register-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 450px;
+            margin: 40px 0;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 22px;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        input[type="submit"] {
+            background-color: #5bc0de;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        input[type="submit"]:hover {
+            background-color: #31b0d5;
+        }
+        select {
+            height: 40px;
+            overflow-y: auto;
+        }
+        select[multiple] {
+            height: auto;
+            max-height: 120px; /* Set max height for scrollability */
+            overflow-y: auto; /* Enable scroll for multiple selection */
+        }
+        .section-title {
+            font-size: 16px;
+            color: #5bc0de;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #5bc0de;
+            padding-bottom: 5px;
+        }
+    </style>
 </head>
 <body>
     <div class="register-container">
         <h1>Create an Account</h1>
         <form action="/register" method="post">
-            <!-- Full Name field -->
-            <input type="text" name="full_name" placeholder="Full Name" required>
+            <!-- Personal Information Section -->
+            <input type="text" name="full_name" id="full_name" placeholder="Full Name" required>
+            <input type="email" name="email" id="email" placeholder="Email" required>
+            <input type="password" name="password" id="password" placeholder="Password" required>
 
-            <!-- Email field -->
-            <input type="email" name="email" placeholder="Email" required>
+            <!-- Address Section -->
+            <input type="text" name="address_1" id="address_1" placeholder="Street Address" required>
+            <input type="text" name="address_2" id="address_2" placeholder="Address Line 2 (Optional)">
+            <input type="text" name="city" id="city" placeholder="City" required>
 
-            <!-- Password field -->
-            <input type="password" name="password" placeholder="Password" required>
-
-            <!-- Address Line 1 field -->
-            <input type="text" name="address_1" placeholder="Street Address" required>
-
-            <!-- Address Line 2 field -->
-            <input type="text" name="address_2" placeholder="Address Line 2 (Optional)">
-
-            <!-- City field -->
-            <input type="text" name="city" placeholder="City" required>
-
-            <!-- State field -->
-            <select name="state" required>
+            <!-- State Dropdown with Scroll -->
+            <select name="state" id="state" required>
                 <option value="" disabled selected>Select Your State</option>
                 <option value="AL">Alabama (AL)</option>
                 <option value="AK">Alaska (AK)</option>
@@ -82,47 +140,31 @@
                 <option value="WY">Wyoming (WY)</option>
             </select>
 
-            <!-- Zip Code field with validation -->
-            <input
-                type="text"
-                name="zip_code"
-                placeholder="Zipcode"
-                required
-                pattern="\d{5,}"
-                title="Please enter at least 5 digits for the zip code"
-            >
+            <input type="text" name="zip_code" id="zip_code" placeholder="Zipcode" required pattern="\d{5,}" title="Please enter at least 5 digits for the zip code">
 
-            <!-- Role field -->
-            <select name="role" required>
+            <!-- Role Section -->
+            <select name="role" id="role" required>
                 <option value="" disabled selected>Select Your Role</option>
                 <option value="volunteer">Volunteer</option>
                 <option value="admin">Admin</option>
             </select>
 
-            <!-- Skills field -->
-            <label for="skills">Skills (for Volunteers):</label>
+            <!-- Skills Section (for Volunteers) with Scroll -->
             <select name="skills[]" id="skills" multiple>
                 <option value="first_aid">First Aid</option>
                 <option value="cpr">CPR Certification</option>
                 <option value="construction">Construction</option>
-                <option value="counseling">Counseling</option>
-                <option value="cooking">Cooking</option>
                 <option value="teaching">Teaching</option>
-                <option value="it_support">IT Support</option>
+                <option value="cooking">Cooking</option>
                 <option value="event_planning">Event Planning</option>
-                <option value="n/a">N/A</option>
-                <!-- Add more skills as needed -->
+                <option value="it_support">IT Support</option>
             </select>
 
-            <!-- Availability Start Date field -->
-            <label for="start_date">Availability Start Date:</label>
+            <!-- Availability Section -->
             <input type="date" id="start_date" name="start_date" required>
-
-            <!-- Availability End Date field -->
-            <label for="end_date">Availability End Date:</label>
             <input type="date" id="end_date" name="end_date" required>
 
-            <!-- Submit button -->
+            <!-- Submit Button -->
             <input type="submit" value="Register">
         </form>
     </div>

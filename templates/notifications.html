@@ -36,15 +36,97 @@
             margin-bottom: 10px;
             padding: 15px;
             border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+        li.unread {
+            font-weight: bold;
+        }
+        .blue-circle {
+            width: 10px;
+            height: 10px;
+            background-color: #007bff;
+            border-radius: 50%;
+            position: absolute;
+            top: 15px;
+            left: -20px;
+        }
+        .timestamp {
+            color: #999;
+            font-size: 12px;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .actions button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <div class="notifications-container">
         <h1>Notifications</h1>
-        <ul>
-            <li>No new notifications yet.</li>
+        <ul id="notification-list">
+            <li class="unread">
+                <div class="blue-circle"></div>
+                <div>
+                    <strong>New Event Assignment: Save the world. Plant trees.</strong>
+                    <div class="timestamp">Received: Sep 20, 2024, 10:00 AM</div>
+                </div>
+                <div class="actions">
+                    <button class="mark-read">Mark as Read</button>
+                </div>
+            </li>
+            <li class="unread">
+                <div class="blue-circle"></div>
+                <div>
+                    <strong>Reminder: Food for Homeless</strong>
+                    <div class="timestamp">Received: Sep 19, 2024, 08:00 AM</div>
+                </div>
+                <div class="actions">
+                    <button class="mark-read">Mark as Read</button>
+                </div>
+            </li>
         </ul>
     </div>
+
+    <script>
+        const markReadButtons = document.querySelectorAll('.mark-read');
+        const notificationItems = document.querySelectorAll('li.unread');
+
+        markReadButtons.forEach((button, index) => {
+            button.addEventListener('click', function() {
+                const notificationItem = notificationItems[index];
+                markAsRead(notificationItem);
+            });
+        });
+
+        notificationItems.forEach((item) => {
+            item.addEventListener('click', function() {
+                markAsRead(item);
+            });
+        });
+
+        function markAsRead(item) {
+            item.classList.remove('unread');
+
+            const blueCircle = item.querySelector('.blue-circle');
+            if (blueCircle) {
+                blueCircle.remove();
+            }
+
+            const markReadButton = item.querySelector('.mark-read');
+            markReadButton.disabled = true;
+            markReadButton.textContent = "Read";
+        }
+    </script>
 </body>
 </html>

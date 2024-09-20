@@ -48,9 +48,21 @@
     <div class="profile-container">
         <h1>Welcome, {{ full_name }}!</h1>
         <div class="button-group">
+            <!-- Show Profile Info Button -->
             <form action="{{ url_for('show_profile_info') }}">
                 <button type="submit">Show Profile Info</button>
             </form>
+
+            <!-- Show My History Button -->
+            <form action="{{ url_for('show_history') }}">
+                <button type="submit">Show My History</button>
+            </form>
+
+            <form action="{{ url_for('notifications') }}">
+                <button type="submit">Notifications</button>
+            </form>            
+
+            <!-- Logout Button -->
             <form action="{{ url_for('logout') }}">
                 <button type="submit">Logout</button>
             </form>

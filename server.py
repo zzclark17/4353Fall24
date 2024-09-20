@@ -319,7 +319,16 @@ def match_volunteers(event_id):
     else:
         volunteers = [vol.to_dict() for vol in matching_volunteers]
         return render_template('match_volunteers.html', event=event, volunteers=volunteers)
+    
+#Cholponai
+@app.route('/show_history')
+def show_history():
+    # Render the volunteer history page without any predefined data
+    return render_template('volunteer_history.html')
 
+@app.route('/notifications')
+def notifications():
+    return render_template('notifications.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

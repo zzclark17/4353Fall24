@@ -228,6 +228,23 @@ def show_profile_info():
     user = user_df.iloc[0]
     return render_template('profile_info.html', user=user)
 
+@app.route('/show_history')
+def show_history():
+    if 'user_id' not in session or session.get('role') != 'volunteer':
+        return redirect(url_for('splash_screen'))
+    
+    # Logic to retrieve and display the volunteer's history
+    # For now, you can just render a simple template
+    return render_template('volunteer_history.html')
+
+@app.route('/notifications')
+def notifications():
+    if 'user_id' not in session:
+        return redirect(url_for('splash_screen'))
+
+    # Logic to retrieve and display notifications for the user
+    return render_template('notifications.html')
+
 
 @app.route('/edit_event/<int:event_id>', methods=['GET', 'POST'])
 def edit_event(event_id):

@@ -29,7 +29,6 @@ def splash_screen():
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        # Step 1: Collect form data
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '').strip()
         full_name = request.form.get('full_name', '').strip()
@@ -44,23 +43,19 @@ def register():
         skills_list = request.form.getlist('skills[]')
         skills = ','.join(skills_list) if skills_list else ''
 
-        # Step 2: Validate required fields
         if not email or not password or not full_name or not address_1 or not city or not state or not zip_code or not role or not start_date_str or not end_date_str:
             return "Error: Missing required fields.", 400
         
         if len(zip_code) < 5:
             return "Error: Invalid zip code.", 400
 
-        # Step 3: Check if user already exists
         existing_user_query = "SELECT * FROM Users WHERE email = :email"
         existing_user_df = pd.read_sql(existing_user_query, engine, params={'email': email})
         if not existing_user_df.empty:
             return "Error: A user with this email already exists.", 400
 
-        # Step 4: Hash the password and prepare data
         hashed_password = generate_password_hash(password)
 
-        # Step 5: Check that start date is before end date
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
@@ -70,7 +65,6 @@ def register():
         if end_date < start_date:
             return "Error: End date cannot be before start date.", 400
 
-        # Step 6: Save user data to the database
         user_data = pd.DataFrame({
             'email': [email],
             'password': [hashed_password],
@@ -87,7 +81,6 @@ def register():
         })
         user_data.to_sql('Users', engine, if_exists='append', index=False)
 
-        # Step 7: Calculate the availability
         delta = end_date - start_date
         availability_list = [start_date + timedelta(days=i) for i in range(delta.days + 1)]
         availability_list_str = [date.strftime('%Y-%m-%d') for date in availability_list]
@@ -101,14 +94,13 @@ def register():
         })
         availability_data.to_sql('Availability', engine, if_exists='append', index=False)
 
-        # Step 8: Return success response
-        return "Registration Successful!", 201  # Return 201 Created
+        return "Registration Successful!", 201  
     else:
         return render_template('registration.html')
 
 @app.route("/login", methods=['POST'])
 def login():
-    email = request.form['email']  # Use 'email' field in the form, not 'username'
+    email = request.form['email']  
     password = request.form['password']
 
     user_query = "SELECT * FROM Users WHERE email = :email"
@@ -132,20 +124,10 @@ def login():
         return "Invalid email or password."
 
 
-"""
 @app.route('/admin_profile')
 def admin_profile():
     if 'user_id' not in session or session.get('role') != 'admin':
-        return redirect(url_for('splash_screen'))
-
-    return render_template('admin_profile.html',
-                           full_name=session.get('full_name'))
-"""
-
-@app.route('/admin_profile')
-def admin_profile():
-    if 'user_id' not in session or session.get('role') != 'admin':
-        return redirect(url_for('splash_screen'))  # Redirect non-admins
+        return redirect(url_for('splash_screen'))  
     return render_template('admin_profile.html', full_name=session.get('full_name'))
 
 
@@ -178,7 +160,6 @@ def add_event():
         urgency = request.form['urgency']
         event_date_str = request.form['event_date']
 
-        # Check for missing event date
         if not event_date_str:
             return "Error: Event date is missing."
 
@@ -216,7 +197,6 @@ def manage_events():
     events_query = "SELECT * FROM Events"
     events_df = pd.read_sql(events_query, engine)
 
-    # Convert DataFrame to a list of dictionaries
     events = events_df.to_dict(orient='records')
 
     return render_template('manage_events.html', events=events)
@@ -242,7 +222,6 @@ def show_history():
     if 'user_id' not in session or session.get('role') != 'volunteer':
         return redirect(url_for('splash_screen'))
     
-    # Logic to retrieve and display the volunteer's history
     # For now, you can just render a simple template
     return render_template('volunteer_history.html')
 
@@ -251,7 +230,6 @@ def notifications():
     if 'user_id' not in session:
         return redirect(url_for('splash_screen'))
 
-    # Logic to retrieve and display notifications for the user
     return render_template('notifications.html')
 
 

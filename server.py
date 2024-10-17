@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Hello, Replit!"
+    return "Hello"
 
 
 if __name__ == "__main__":
@@ -236,6 +236,31 @@ def show_history():
     # Logic to retrieve and display the volunteer's history
     # For now, you can just render a simple template
     return render_template('volunteer_history.html')
+
+@app.route('/assigned_events')
+def assigned_events():
+    # Check if the user is logged in and is a volunteer
+    if 'user_id' not in session or session.get('role') != 'volunteer':
+        return redirect(url_for('splash_screen'))
+
+    # SQL query to fetch assigned events for the logged-in volunteer
+    assigned_events_query = """
+        SELECT Events.event_name, Events.event_date, Events.location, VolunteerAssignments.role
+        FROM VolunteerAssignments
+        JOIN Events ON VolunteerAssignments.event_id = Events.id
+        WHERE VolunteerAssignments.user_id = :user_id
+        ORDER BY Events.event_date ASC
+    """
+
+    # Execute the query
+    assigned_events_df = pd.read_sql(assigned_events_query, engine, params={'user_id': session['user_id']})
+
+    # Convert DataFrame to a list of dictionaries for rendering in the template
+    assigned_events = assigned_events_df.to_dict(orient='records')
+
+    # Render the assigned events page
+    return render_template('assigned_events.html', assigned_events=assigned_events)
+
 
 @app.route('/notifications')
 def notifications():

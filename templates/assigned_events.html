@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assigned Events</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eef2f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .events-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 600px;
+        }
+        .events-container h1 {
+            margin-bottom: 30px;
+            font-size: 24px;
+            color: #333;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .back-button {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .back-button button {
+            padding: 12px;
+            background-color: #5bc0de;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .back-button button:hover {
+            background-color: #31b0d5;
+        }
+    </style>
+</head>
+<body>
+    <div class="events-container">
+        <h1>Assigned Events</h1>
+
+        {% if assigned_events %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Event Name</th>
+                    <th>Location</th>
+                    <th>Your Role</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in assigned_events %}
+                <tr>
+                    <td>{{ event.event_date }}</td>
+                    <td>{{ event.event_name }}</td>
+                    <td>{{ event.location }}</td>
+                    <td>{{ event.role }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>You have no upcoming events assigned.</p>
+        {% endif %}
+
+        <!-- Back Button -->
+        <div class="back-button">
+            <button onclick="window.history.back();">Back to Profile</button>
+        </div>
+    </div>
+</body>
+</html>

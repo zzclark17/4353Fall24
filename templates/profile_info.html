@@ -86,7 +86,7 @@
     <div class="profile-container">
         <h1>Your Profile Information</h1>
 
-        <!-- Personal Information Section (For Both Roles) -->
+        <!-- Personal Information Section -->
         <div class="section-title">Personal Information</div>
         <div class="profile-details">
             <p><strong>Full Name:</strong></p>
@@ -109,26 +109,26 @@
             <p>{{ user['role'] }}</p>
         </div>
 
-        <!-- Volunteer-Only Information -->
-        {% if user['role'] == 'volunteer' %}
-            <div class="section-title">Skills</div>
-            <div class="profile-details">
-                <p><strong>Skills:</strong></p>
-                {% if user['skills'] %}
-                    <p>{{ user['skills'] }}</p>
-                {% else %}
-                    <p>No skills provided</p>
-                {% endif %}
-            </div>
+        <!-- Skills Section -->
+        <div class="section-title">Skills</div>
+        <div class="profile-details">
+            <p><strong>Skills:</strong></p>
+            {% if user['skills'] %}
+                <p>{{ ', '.join(user['skills']) }}</p>
+            {% else %}
+                <p>No skills provided</p>
+            {% endif %}
+        </div>
 
-            <div class="section-title">Availability</div>
-            <div class="profile-details">
-                <p><strong>Start Date:</strong></p>
-                <p>{{ user['availability_start'] if user['availability_start'] else 'Not set' }}</p>
-                <p><strong>End Date:</strong></p>
-                <p>{{ user['availability_end'] if user['availability_end'] else 'Not set' }}</p>
-            </div>
-        {% endif %}
+
+        <!-- Availability Section -->
+        <div class="section-title">Availability</div>
+        <div class="profile-details">
+            <p><strong>Start Date:</strong></p>
+            <p>{{ user['availability_start'] if user['availability_start'] else 'Not set' }}</p>
+            <p><strong>End Date:</strong></p>
+            <p>{{ user['availability_end'] if user['availability_end'] else 'Not set' }}</p>
+        </div>
 
         <!-- Back Button -->
         <div class="back-button">

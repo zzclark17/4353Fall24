@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import pandas as pd
 from sqlalchemy import create_engine
+from sqlalchemy import text
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 
@@ -397,7 +398,7 @@ def update_profile():
     city = request.form['city']
     state = request.form['state']
     zip_code = request.form['zip_code']
-    skills_list = request.form.getlist('skills')
+    skills_list = request.form.getlist('skills[]')  
     skills = ','.join(skills_list)
 
     update_query = """

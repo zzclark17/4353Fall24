@@ -313,13 +313,19 @@ def match_volunteers(event_id):
         return "Event not found."
 
     event = event_df.iloc[0]
-
-    required_skills = set(event['required_skills'].split(
-        ',')) if event['required_skills'] else set()
+    required_skills = set(event['required_skills'].split(',')) if event['required_skills'] else set()
     event_date = event['event_date']
 
-    users_query = "SELECT * FROM Users WHERE role = 'volunteer'"
-    users_df = pd.read_sql(users_query, engine)
+    if isinstance(event_date, str):
+        event_date = datetime.strptime(event_date, '%Y-%m-%d').date()
+    elif isinstance(event_date, pd.Timestamp):
+        event_date = event_date.date()
+
+    users_query = """
+        SELECT id, email, full_name, skills, availability_start, availability_end
+        FROM Users WHERE role = 'volunteer'
+    """
+    users_df = pd.read_sql(users_query, engine, index_col=None)
 
     if 'skills' not in users_df.columns:
         users_df['skills'] = ''
@@ -328,47 +334,53 @@ def match_volunteers(event_id):
 
     for idx, user in users_df.iterrows():
         user_skills = set()
-
         if pd.notnull(user.get('skills')):
             user_skills = set(user['skills'].split(','))
 
-        if not required_skills or required_skills.issubset(user_skills):
-            availability_query = """
-                SELECT * FROM Availability
-                WHERE user_id = :user_id AND available_date = :event_date
-            """
-            availability_df = pd.read_sql(availability_query,
-                                          engine,
-                                          params={
-                                              'user_id': user['id'],
-                                              'event_date': event_date
-                                          })
+        if not required_skills or user_skills & required_skills:
+            availability_start = user.get('availability_start')
+            availability_end = user.get('availability_end')
 
-            if not availability_df.empty:
-                matching_volunteers.append(user)
+            if pd.notnull(availability_start) and pd.notnull(availability_end):
+                if isinstance(availability_start, str):
+                    availability_start = datetime.strptime(availability_start, '%Y-%m-%d').date()
+                elif isinstance(availability_start, pd.Timestamp):
+                    availability_start = availability_start.date()
+
+                if isinstance(availability_end, str):
+                    availability_end = datetime.strptime(availability_end, '%Y-%m-%d').date()
+                elif isinstance(availability_end, pd.Timestamp):
+                    availability_end = availability_end.date()
+
+                if availability_start <= event_date <= availability_end:
+                    user_dict = user.to_dict()
+                    user_dict['start_date_str'] = availability_start.strftime('%Y-%m-%d')
+                    user_dict['end_date_str'] = availability_end.strftime('%Y-%m-%d')
+                    matching_volunteers.append(user_dict)
+            else:
+                pass
 
     if request.method == 'POST':
         selected_volunteer_ids = request.form.getlist('volunteer_ids')
+        selected_volunteer_ids = [int(vol_id) for vol_id in selected_volunteer_ids]
+
         assignment_data = pd.DataFrame({
             'event_id': [event_id] * len(selected_volunteer_ids),
-            'user_id':
-            selected_volunteer_ids
+            'user_id': selected_volunteer_ids
         })
+
         try:
-            assignment_data.to_sql('VolunteerAssignments',
-                                   engine,
-                                   if_exists='append',
-                                   index=False)
+            assignment_data.to_sql('VolunteerAssignments', engine, if_exists='append', index=False)
         except Exception as e:
             print(e)
-            return "Error: Failed to assign volunteers."
+            return f"Error: Failed to assign volunteers. {e}"
         return redirect(url_for('manage_events'))
-
     else:
-        volunteers = [vol.to_dict() for vol in matching_volunteers]
-        return render_template('match_volunteers.html',
-                               event=event,
-                               volunteers=volunteers)
+        volunteers = matching_volunteers
+        print("Volunteers passed to template:", volunteers)
+        return render_template('match_volunteers.html', event=event, volunteers=volunteers)
+
+
 
 
 @app.route('/edit_profile', methods=['GET'])

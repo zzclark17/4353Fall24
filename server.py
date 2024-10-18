@@ -26,80 +26,31 @@ def splash_screen():
     return render_template('index.html')
 
 
+
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        full_name = request.form['full_name']
-        address_1 = request.form['address_1']
-        address_2 = request.form.get('address_2', '')
-        city = request.form['city']
-        state = request.form['state']
-        zip_code = request.form['zip_code']
-        role = request.form['role']
-        start_date_str = request.form['start_date']
-        end_date_str = request.form['end_date']
-        preferences = request.form.get('preferences', '')
-        skills_list = request.form.getlist('skills[]')
-        skills = ','.join(skills_list)
         hashed_password = generate_password_hash(password)
 
+        # Automatically set role to 'volunteer' if it's not specified
+        role = 'volunteer'
+
+        # Check if the user already exists
         existing_user_query = "SELECT * FROM Users WHERE email = :email"
-        existing_user_df = pd.read_sql(existing_user_query,
-                                       engine,
-                                       params={'email': email})
+        existing_user_df = pd.read_sql(existing_user_query, engine, params={'email': email})
         if not existing_user_df.empty:
             return "Error: A user with this email already exists."
 
+        # Save the new user's data
         user_data = pd.DataFrame({
             'email': [email],
             'password': [hashed_password],
-            'full_name': [full_name],
-            'address_1': [address_1],
-            'address_2': [address_2],
-            'city': [city],
-            'state': [state],
-            'zip_code': [zip_code],
-            'role': [role],
-            'preferences': [preferences],
-            'availability_start': [start_date_str],
-            'availability_end': [end_date_str],
-            'skills': [skills]
+            'role': [role]  # Automatically sets role as 'volunteer'
         })
 
         user_data.to_sql('Users', engine, if_exists='append', index=False)
-
-        new_user_query = "SELECT id FROM Users WHERE email = :email"
-        new_user_df = pd.read_sql(new_user_query,
-                                  engine,
-                                  params={'email': email})
-        user_id = new_user_df['id'].iloc[0]
-
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-
-        if end_date < start_date:
-            return "Error: End date cannot be before start date."
-
-        delta = end_date - start_date
-        availability_list = [
-            start_date + timedelta(days=i) for i in range(delta.days + 1)
-        ]
-        availability_list_str = [
-            date.strftime('%Y-%m-%d') for date in availability_list
-        ]
-
-        availability_data = pd.DataFrame({
-            'user_id': [user_id] * len(availability_list_str),
-            'available_date':
-            availability_list_str
-        })
-
-        availability_data.to_sql('Availability',
-                                 engine,
-                                 if_exists='append',
-                                 index=False)
 
         return "Registration Successful!"
     else:
@@ -211,30 +162,35 @@ def manage_events():
 
     return render_template('manage_events.html', events=events)
 
-
 @app.route('/show_profile_info')
 def show_profile_info():
     if 'user_id' not in session:
         return redirect(url_for('splash_screen'))
 
     user_query = "SELECT * FROM Users WHERE id = :user_id"
-    user_df = pd.read_sql(user_query,
-                          engine,
-                          params={'user_id': session['user_id']})
+    user_df = pd.read_sql(user_query, engine, params={'user_id': session['user_id']})
 
     if user_df.empty:
         return "User not found."
 
-    user = user_df.iloc[0]
+    user = user_df.iloc[0].to_dict()
+
+    # Make sure 'skills' are properly fetched
+    user['skills'] = user.get('skills', '')
+    user['skills'] = user['skills'].split(',') if user['skills'] else []
+
+    # Handle availability formatting
+    user['availability_start'] = user.get('availability_start', '') if pd.notna(user.get('availability_start')) else None
+    user['availability_end'] = user.get('availability_end', '') if pd.notna(user.get('availability_end')) else None
+
     return render_template('profile_info.html', user=user)
+
 
 @app.route('/show_history')
 def show_history():
     if 'user_id' not in session or session.get('role') != 'volunteer':
         return redirect(url_for('splash_screen'))
     
-    # Logic to retrieve and display the volunteer's history
-    # For now, you can just render a simple template
     return render_template('volunteer_history.html')
 
 @app.route('/assigned_events')
@@ -267,7 +223,6 @@ def notifications():
     if 'user_id' not in session:
         return redirect(url_for('splash_screen'))
 
-    # Logic to retrieve and display notifications for the user
     return render_template('notifications.html')
 
 
@@ -415,5 +370,64 @@ def match_volunteers(event_id):
                                volunteers=volunteers)
 
 
+@app.route('/edit_profile', methods=['GET'])
+def edit_profile():
+    if 'user_id' not in session:
+        return redirect(url_for('splash_screen'))
+
+    user_query = "SELECT * FROM Users WHERE id = :user_id"
+    user_df = pd.read_sql(user_query, engine, params={'user_id': session['user_id']})
+
+    if user_df.empty:
+        return "User not found."
+
+    user = user_df.iloc[0].to_dict()
+    user['skills'] = user['skills'].split(',') if user['skills'] else []
+
+    return render_template('edit_profile.html', user=user)
+
+@app.route('/update_profile', methods=['POST'])
+def update_profile():
+    if 'user_id' not in session:
+        return redirect(url_for('splash_screen'))
+
+    full_name = request.form['full_name']
+    address_1 = request.form['address_1']
+    address_2 = request.form.get('address_2', '')
+    city = request.form['city']
+    state = request.form['state']
+    zip_code = request.form['zip_code']
+    skills_list = request.form.getlist('skills')
+    skills = ','.join(skills_list)
+
+    update_query = """
+        UPDATE Users SET
+            full_name = :full_name,
+            address_1 = :address_1,
+            address_2 = :address_2,
+            city = :city,
+            state = :state,
+            zip_code = :zip_code,
+            skills = :skills
+        WHERE id = :user_id
+    """
+
+    params = {
+        'full_name': full_name,
+        'address_1': address_1,
+        'address_2': address_2,
+        'city': city,
+        'state': state,
+        'zip_code': zip_code,
+        'skills': skills,
+        'user_id': session['user_id']
+    }
+
+    with engine.begin() as conn:
+        conn.execute(update_query, params)
+
+    return redirect(url_for('show_profile_info'))
+
 if __name__ == '__main__':
     app.run(debug=True)
+

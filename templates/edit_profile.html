@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef2f3;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+            margin: 0;
+            overflow-y: auto;
+        }
+        .edit-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 450px;
+            margin: 40px 0;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 22px;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        input[type="submit"] {
+            background-color: #5bc0de;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        input[type="submit"]:hover {
+            background-color: #31b0d5;
+        }
+        select {
+            height: 40px;
+            overflow-y: auto;
+        }
+        .section-title {
+            font-size: 16px;
+            color: #5bc0de;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #5bc0de;
+            padding-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="edit-container">
+        <h1>Edit Your Information</h1>
+        <form action="/update_profile" method="post">
+            <!-- Personal Information Section -->
+            <div class="section-title">Personal Information</div>
+            <label for="full_name">Full Name:</label>
+            <input type="text" name="full_name" id="full_name" value="{{ user['full_name'] }}" required>
+
+            <label for="address_1">Address Line 1:</label>
+            <input type="text" name="address_1" id="address_1" value="{{ user['address_1'] }}" required>
+
+            <label for="address_2">Address Line 2:</label>
+            <input type="text" name="address_2" id="address_2" value="{{ user['address_2'] }}">
+
+            <label for="city">City:</label>
+            <input type="text" name="city" id="city" value="{{ user['city'] }}" required>
+
+            <label for="state">State:</label>
+            <select name="state" id="state" required>
+                <option value="" disabled>Select Your State</option>
+                <option value="AL" {% if user['state'] == 'AL' %}selected{% endif %}>Alabama (AL)</option>
+                <option value="AK" {% if user['state'] == 'AK' %}selected{% endif %}>Alaska (AK)</option>
+                <option value="AZ" {% if user['state'] == 'AZ' %}selected{% endif %}>Arizona (AZ)</option>
+                <option value="AR" {% if user['state'] == 'AR' %}selected{% endif %}>Arkansas (AR)</option>
+                <option value="CA" {% if user['state'] == 'CA' %}selected{% endif %}>California (CA)</option>
+                <option value="CO" {% if user['state'] == 'CO' %}selected{% endif %}>Colorado (CO)</option>
+                <option value="CT" {% if user['state'] == 'CT' %}selected{% endif %}>Connecticut (CT)</option>
+                <option value="DE" {% if user['state'] == 'DE' %}selected{% endif %}>Delaware (DE)</option>
+                <option value="FL" {% if user['state'] == 'FL' %}selected{% endif %}>Florida (FL)</option>
+                <option value="GA" {% if user['state'] == 'GA' %}selected{% endif %}>Georgia (GA)</option>
+                <option value="HI" {% if user['state'] == 'HI' %}selected{% endif %}>Hawaii (HI)</option>
+                <option value="ID" {% if user['state'] == 'ID' %}selected{% endif %}>Idaho (ID)</option>
+                <option value="IL" {% if user['state'] == 'IL' %}selected{% endif %}>Illinois (IL)</option>
+                <option value="IN" {% if user['state'] == 'IN' %}selected{% endif %}>Indiana (IN)</option>
+                <option value="IA" {% if user['state'] == 'IA' %}selected{% endif %}>Iowa (IA)</option>
+                <option value="KS" {% if user['state'] == 'KS' %}selected{% endif %}>Kansas (KS)</option>
+                <option value="KY" {% if user['state'] == 'KY' %}selected{% endif %}>Kentucky (KY)</option>
+                <option value="LA" {% if user['state'] == 'LA' %}selected{% endif %}>Louisiana (LA)</option>
+                <option value="ME" {% if user['state'] == 'ME' %}selected{% endif %}>Maine (ME)</option>
+                <option value="MD" {% if user['state'] == 'MD' %}selected{% endif %}>Maryland (MD)</option>
+                <option value="MA" {% if user['state'] == 'MA' %}selected{% endif %}>Massachusetts (MA)</option>
+                <option value="MI" {% if user['state'] == 'MI' %}selected{% endif %}>Michigan (MI)</option>
+                <option value="MN" {% if user['state'] == 'MN' %}selected{% endif %}>Minnesota (MN)</option>
+                <option value="MS" {% if user['state'] == 'MS' %}selected{% endif %}>Mississippi (MS)</option>
+                <option value="MO" {% if user['state'] == 'MO' %}selected{% endif %}>Missouri (MO)</option>
+                <option value="MT" {% if user['state'] == 'MT' %}selected{% endif %}>Montana (MT)</option>
+                <option value="NE" {% if user['state'] == 'NE' %}selected{% endif %}>Nebraska (NE)</option>
+                <option value="NV" {% if user['state'] == 'NV' %}selected{% endif %}>Nevada (NV)</option>
+                <option value="NH" {% if user['state'] == 'NH' %}selected{% endif %}>New Hampshire (NH)</option>
+                <option value="NJ" {% if user['state'] == 'NJ' %}selected{% endif %}>New Jersey (NJ)</option>
+                <option value="NM" {% if user['state'] == 'NM' %}selected{% endif %}>New Mexico (NM)</option>
+                <option value="NY" {% if user['state'] == 'NY' %}selected{% endif %}>New York (NY)</option>
+                <option value="NC" {% if user['state'] == 'NC' %}selected{% endif %}>North Carolina (NC)</option>
+                <option value="ND" {% if user['state'] == 'ND' %}selected{% endif %}>North Dakota (ND)</option>
+                <option value="OH" {% if user['state'] == 'OH' %}selected{% endif %}>Ohio (OH)</option>
+                <option value="OK" {% if user['state'] == 'OK' %}selected{% endif %}>Oklahoma (OK)</option>
+                <option value="OR" {% if user['state'] == 'OR' %}selected{% endif %}>Oregon (OR)</option>
+                <option value="PA" {% if user['state'] == 'PA' %}selected{% endif %}>Pennsylvania (PA)</option>
+                <option value="RI" {% if user['state'] == 'RI' %}selected{% endif %}>Rhode Island (RI)</option>
+                <option value="SC" {% if user['state'] == 'SC' %}selected{% endif %}>South Carolina (SC)</option>
+                <option value="SD" {% if user['state'] == 'SD' %}selected{% endif %}>South Dakota (SD)</option>
+                <option value="TN" {% if user['state'] == 'TN' %}selected{% endif %}>Tennessee (TN)</option>
+                <option value="TX" {% if user['state'] == 'TX' %}selected{% endif %}>Texas (TX)</option>
+                <option value="UT" {% if user['state'] == 'UT' %}selected{% endif %}>Utah (UT)</option>
+                <option value="VT" {% if user['state'] == 'VT' %}selected{% endif %}>Vermont (VT)</option>
+                <option value="VA" {% if user['state'] == 'VA' %}selected{% endif %}>Virginia (VA)</option>
+                <option value="WA" {% if user['state'] == 'WA' %}selected{% endif %}>Washington (WA)</option>
+                <option value="WV" {% if user['state'] == 'WV' %}selected{% endif %}>West Virginia (WV)</option>
+                <option value="WI" {% if user['state'] == 'WI' %}selected{% endif %}>Wisconsin (WI)</option>
+                <option value="WY" {% if user['state'] == 'WY' %}selected{% endif %}>Wyoming (WY)</option>
+            </select>
+
+            <label for="zip_code">Zip Code:</label>
+            <input type="text" name="zip_code" id="zip_code" value="{{ user['zip_code'] }}" required pattern="\d{5,}" title="Please enter at least 5 digits for the zip code">
+
+            <!-- Volunteer-Only Fields -->
+            {% if user['role'] == 'volunteer' %}
+                <div class="section-title">Skills</div>
+                <label for="skills">Skills:</label>
+                <select name="skills[]" id="skills" multiple>
+                    <option value="first_aid" {% if 'first_aid' in user['skills'] %}selected{% endif %}>First Aid</option>
+                    <option value="cpr" {% if 'cpr' in user['skills'] %}selected{% endif %}>CPR Certification</option>
+                    <option value="construction" {% if 'construction' in user['skills'] %}selected{% endif %}>Construction</option>
+                    <option value="teaching" {% if 'teaching' in user['skills'] %}selected{% endif %}>Teaching</option>
+                    <option value="cooking" {% if 'cooking' in user['skills'] %}selected{% endif %}>Cooking</option>
+                    <option value="event_planning" {% if 'event_planning' in user['skills'] %}selected{% endif %}>Event Planning</option>
+                    <option value="it_support" {% if 'it_support' in user['skills'] %}selected{% endif %}>IT Support</option>
+                </select>
+
+                <div class="section-title">Availability</div>
+                <label for="start_date">Start Date:</label>
+                <input type="date" name="start_date" id="start_date" value="{{ user['availability_start'] }}">
+
+                <label for="end_date">End Date:</label>
+                <input type="date" name="end_date" id="end_date" value="{{ user['availability_end'] }}">
+            {% endif %}
+
+            <!-- Submit Button -->
+            <input type="submit" value="Save Changes">
+        </form>
+    </div>
+</body>
+</html>

@@ -86,7 +86,7 @@
     <div class="profile-container">
         <h1>Your Profile Information</h1>
 
-        <!-- Personal Information Section -->
+        <!-- Personal Information Section (For Both Roles) -->
         <div class="section-title">Personal Information</div>
         <div class="profile-details">
             <p><strong>Full Name:</strong></p>
@@ -109,18 +109,24 @@
             <p>{{ user['role'] }}</p>
         </div>
 
-        <!-- Skills and Preferences Section -->
-        {% if user['preferences'] or user['skills'] %}
-            <div class="section-title">Skills & Preferences</div>
+        <!-- Volunteer-Only Information -->
+        {% if user['role'] == 'volunteer' %}
+            <div class="section-title">Skills</div>
             <div class="profile-details">
-                {% if user['preferences'] %}
-                    <p><strong>Preferences:</strong></p>
-                    <p>{{ user['preferences'] }}</p>
-                {% endif %}
+                <p><strong>Skills:</strong></p>
                 {% if user['skills'] %}
-                    <p><strong>Skills:</strong></p>
                     <p>{{ user['skills'] }}</p>
+                {% else %}
+                    <p>No skills provided</p>
                 {% endif %}
+            </div>
+
+            <div class="section-title">Availability</div>
+            <div class="profile-details">
+                <p><strong>Start Date:</strong></p>
+                <p>{{ user['availability_start'] if user['availability_start'] else 'Not set' }}</p>
+                <p><strong>End Date:</strong></p>
+                <p>{{ user['availability_end'] if user['availability_end'] else 'Not set' }}</p>
             </div>
         {% endif %}
 
@@ -132,6 +138,13 @@
                 <form action="{{ url_for('volunteer_profile') }}">
             {% endif %}
                 <button type="submit">Back to Profile</button>
+            </form>
+        </div>
+
+        <!-- Edit Information Button -->
+        <div class="back-button">
+            <form action="{{ url_for('edit_profile') }}">
+                <button type="submit">Edit Information</button>
             </form>
         </div>
     </div>

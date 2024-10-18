@@ -401,7 +401,7 @@ def update_profile():
     skills_list = request.form.getlist('skills[]')  
     skills = ','.join(skills_list)
 
-    update_query = """
+    update_query = '''
         UPDATE Users SET
             full_name = :full_name,
             address_1 = :address_1,
@@ -411,7 +411,7 @@ def update_profile():
             zip_code = :zip_code,
             skills = :skills
         WHERE id = :user_id
-    """
+    '''
 
     params = {
         'full_name': full_name,
@@ -425,7 +425,7 @@ def update_profile():
     }
 
     with engine.begin() as conn:
-        conn.execute(update_query, params)
+        conn.execute(text(update_query), params)
 
     return redirect(url_for('show_profile_info'))
 

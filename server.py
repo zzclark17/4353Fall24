@@ -94,6 +94,12 @@ def register():
         })
         availability_data.to_sql('Availability', engine, if_exists='append', index=False)
 
+        print(availability_data)
+        availability_data.to_sql('Availability', engine, if_exists='append', index=False)
+        print("Availability data written to DB.")
+        print(f"User ID from test: {user_id}")
+
+
         return "Registration Successful!", 201  
     else:
         return render_template('registration.html')

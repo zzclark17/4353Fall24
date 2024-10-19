@@ -1,16 +1,19 @@
 import sys
-print(sys.path)
-
 import os
 import pytest
 from flask import session
 import uuid
 from server import app, engine
 from sqlalchemy import text
+import pandas as pd  # Add this line to import Pandas
+import datetime
+import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-@pytest.fixture
+
+
+"""@pytest.fixture
 def client():
     app.config['TESTING'] = True
     app.config['SECRET_KEY'] = 'test_secret_key'
@@ -22,7 +25,7 @@ def client():
             yield client
             
             transaction.rollback()
-
+"""
 def test_splash_screen(client):
     response = client.get('/')
     assert response.status_code == 200
@@ -32,6 +35,10 @@ def test_splash_screen(client):
 
 def test_register(client):
     unique_email = f"testuser_{uuid.uuid4()}@gmail.com"
+    start_date = '2024-10-01'
+    end_date = '2024-10-05'
+
+    # Send POST request to register the user
     response = client.post('/register', data={
         'email': unique_email,
         'password': 'password123',
@@ -42,13 +49,34 @@ def test_register(client):
         'state': 'TX',
         'zip_code': '12345',
         'role': 'volunteer',
-        'start_date': '2024-10-01',
-        'end_date': '2024-10-05',
+        'start_date': start_date,
+        'end_date': end_date,
         'skills[]': ['first_aid', 'CPR']
     }, follow_redirects=True)
 
     assert response.status_code == 201
     assert b"Registration Successful!" in response.data
+
+    # Query Users table for the new user
+    user_query = "SELECT * FROM Users WHERE email = :email"
+    user_df = pd.read_sql(user_query, engine, params={'email': unique_email})
+    assert not user_df.empty, "User was not successfully added to the database."
+
+    user_id = user_df['id'].iloc[0]
+
+    # Add a small delay before querying the availability table to ensure the data is committed
+    time.sleep(1)
+
+    # Query Availability table for the newly added user
+    availability_query = "SELECT * FROM Availability WHERE user_id = :user_id"
+    availability_df = pd.read_sql(availability_query, engine, params={'user_id': user_id})
+
+    # Corrected datetime parsing
+    start_date_obj = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
+    end_date_obj = datetime.datetime.strptime(end_date, '%Y-%m-%d').date()
+
+    # Check if the correct number of availability dates is stored
+    assert len(availability_df) == (end_date_obj - start_date_obj).days + 1, f"Availability dates were not stored correctly for user_id: {user_id}. Found {len(availability_df)} dates instead of {5}."
 
 def test_register_invalid(client):
     response = client.post('/register', data={
@@ -68,6 +96,47 @@ def test_register_invalid(client):
     assert response.status_code == 400
     assert b"Error: Missing required fields." in response.data
 
+def test_register_invalid_date_format(client):
+    unique_email = f"testuser_{uuid.uuid4()}@gmail.com"
+    response = client.post('/register', data={
+        'email': unique_email,
+        'password': 'password123',
+        'full_name': 'Test User',
+        'address_1': '123 Test St',
+        'address_2': '',
+        'city': 'Test City',
+        'state': 'TX',
+        'zip_code': '12345',
+        'role': 'volunteer',
+        'start_date': 'invalid_date',
+        'end_date': '2024-10-05',
+        'skills[]': ['first_aid', 'CPR']
+    }, follow_redirects=True)
+
+    assert response.status_code == 400
+    assert b"Error: Invalid date format." in response.data
+
+def test_register_start_after_end_date(client):
+    unique_email = f"testuser_{uuid.uuid4()}@gmail.com"
+    response = client.post('/register', data={
+        'email': unique_email,
+        'password': 'password123',
+        'full_name': 'Test User',
+        'address_1': '123 Test St',
+        'address_2': '',
+        'city': 'Test City',
+        'state': 'TX',
+        'zip_code': '12345',
+        'role': 'volunteer',
+        'start_date': '2024-10-05',  
+        'end_date': '2024-10-01',
+        'skills[]': ['first_aid', 'CPR']
+    }, follow_redirects=True)
+
+    assert response.status_code == 400
+    assert b"Error: End date cannot be before start date." in response.data
+
+###############################################################################################
 def login(client, email, password):
     return client.post('/login', data=dict(
         email=email,
@@ -89,12 +158,12 @@ def test_login_invalid(client):
     assert response.status_code == 200
     assert b"Invalid email or password." in response.data
 
-@pytest.fixture
+"""@pytest.fixture
 def client():
     app.config['TESTING'] = True
     app.config['SECRET_KEY'] = 'test_secret_key'
     with app.test_client() as client:
-        yield client
+        yield client"""
 
 def test_admin_profile_access(client):
     with client.session_transaction() as sess:
@@ -419,3 +488,21 @@ def test_match_volunteers_no_event(client):
     response = client.get('/match_volunteers/9999', follow_redirects=True)
     assert response.status_code == 200
     assert b"Event not found." in response.data
+
+@pytest.fixture
+def client():
+    app.config['TESTING'] = True
+    app.config['SECRET_KEY'] = 'test_secret_key'
+    
+    with app.test_client() as client:
+        # Use SQLAlchemy's `engine.begin` and mock rollback after each test
+        connection = engine.connect()
+        transaction = connection.begin()
+
+        # Use a scoped session for each test
+        with app.app_context():
+            yield client
+
+        # Rollback after each test
+        transaction.rollback()
+        connection.close()

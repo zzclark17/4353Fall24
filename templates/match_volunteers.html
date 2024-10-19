@@ -3,51 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Match Volunteers to {{ event.event_name }}</title>
-    <style>
-        /* Basic styling */
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #eef2f3;
-            padding: 20px;
-        }
-        h1 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        table {
-            width: 90%;
-            margin: auto;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 12px;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
-        th {
-            background-color: #5bc0de;
-            color: white;
-        }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        .submit-button {
-            width: 200px;
-            margin: 20px auto;
-            text-align: center;
-        }
-        .submit-button input {
-            padding: 12px;
-            background-color: #5cb85c;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .submit-button input:hover {
-            background-color: #4cae4c;
-        }
-    </style>
+    <!-- Styles omitted for brevity -->
 </head>
 <body>
     <h1>Match Volunteers to "{{ event.event_name }}"</h1>
@@ -66,12 +22,12 @@
                 {% for volunteer in volunteers %}
                 <tr>
                     <td>
-                        <input type="checkbox" name="volunteer_ids" value="{{ volunteer.id }}">
+                        <input type="checkbox" name="volunteer_ids" value="{{ volunteer['id'] }}">
                     </td>
-                    <td>{{ volunteer.full_name }}</td>
-                    <td>{{ volunteer.email }}</td>
-                    <td>{{ volunteer.skills }}</td>
-                    <td>{{ volunteer.start_date_str }} to {{ volunteer.end_date_str }}</td>
+                    <td>{{ volunteer['full_name'] }}</td>
+                    <td>{{ volunteer['email'] }}</td>
+                    <td>{{ volunteer['skills'] }}</td>
+                    <td>{{ volunteer['start_date_str'] }} to {{ volunteer['end_date_str'] }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

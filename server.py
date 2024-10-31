@@ -411,6 +411,8 @@ def update_profile():
     zip_code = request.form['zip_code']
     skills_list = request.form.getlist('skills[]')  
     skills = ','.join(skills_list)
+    start_date = request.form.get('start_date')
+    end_date = request.form.get('end_date')
 
     update_query = '''
         UPDATE Users SET
@@ -420,7 +422,9 @@ def update_profile():
             city = :city,
             state = :state,
             zip_code = :zip_code,
-            skills = :skills
+            skills = :skills,
+            availability_start = :availability_start,
+            availability_end = :availability_end
         WHERE id = :user_id
     '''
 
@@ -432,6 +436,8 @@ def update_profile():
         'state': state,
         'zip_code': zip_code,
         'skills': skills,
+        'availability_start': start_date,
+        'availability_end': end_date,
         'user_id': session['user_id']
     }
 

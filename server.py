@@ -249,7 +249,7 @@ def edit_event(event_id):
         event_date_str = request.form['event_date']
 
         event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
-        update_query = """
+        update_query = text("""
             UPDATE Events
             SET event_name = :event_name,
                 event_description = :event_description,
@@ -258,7 +258,7 @@ def edit_event(event_id):
                 urgency = :urgency,
                 event_date = :event_date
             WHERE id = :event_id
-        """
+        """)
 
         params = {
             'event_name': event_name,
@@ -272,7 +272,7 @@ def edit_event(event_id):
 
         try:
             with engine.begin() as conn:
-                conn.execute(update_query, params)
+                conn.execute(update_query, params)  # This will now work
         except Exception as e:
             print(e)
             return "Error: Failed to update event."

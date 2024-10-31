@@ -2,39 +2,105 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Match Volunteers to {{ event.event_name }}</title>
-    <!-- Styles omitted for brevity -->
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef2f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 800px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .container h1 {
+            margin-bottom: 30px;
+            font-size: 26px;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #5bc0de;
+            color: #fff;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .submit-button {
+            text-align: center;
+        }
+        .submit-button input[type="submit"] {
+            padding: 15px;
+            background-color: #5bc0de;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+            max-width: 300px;
+        }
+        .submit-button input[type="submit"]:hover {
+            background-color: #31b0d5;
+        }
+        .submit-button input[type="submit"]:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(91, 192, 222, 0.6);
+        }
+    </style>
 </head>
 <body>
-    <h1>Match Volunteers to "{{ event.event_name }}"</h1>
-    <form action="{{ url_for('match_volunteers', event_id=event.id) }}" method="post">
-        <table>
-            <thead>
-                <tr>
-                    <th>Select</th>
-                    <th>Volunteer Name</th>
-                    <th>Email</th>
-                    <th>Skills</th>
-                    <th>Availability</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for volunteer in volunteers %}
-                <tr>
-                    <td>
-                        <input type="checkbox" name="volunteer_ids" value="{{ volunteer['id'] }}">
-                    </td>
-                    <td>{{ volunteer['full_name'] }}</td>
-                    <td>{{ volunteer['email'] }}</td>
-                    <td>{{ volunteer['skills'] }}</td>
-                    <td>{{ volunteer['start_date_str'] }} to {{ volunteer['end_date_str'] }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <div class="submit-button">
-            <input type="submit" value="Assign Selected Volunteers">
-        </div>
-    </form>
+    <div class="container">
+        <h1>Match Volunteers to "{{ event.event_name }}"</h1>
+        <form action="{{ url_for('match_volunteers', event_id=event.id) }}" method="post">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Select</th>
+                        <th>Volunteer Name</th>
+                        <th>Email</th>
+                        <th>Skills</th>
+                        <th>Availability</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for volunteer in volunteers %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="volunteer_ids" value="{{ volunteer['id'] }}">
+                        </td>
+                        <td>{{ volunteer['full_name'] }}</td>
+                        <td>{{ volunteer['email'] }}</td>
+                        <td>{{ volunteer['skills'] }}</td>
+                        <td>{{ volunteer['start_date_str'] }} to {{ volunteer['end_date_str'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="submit-button">
+                <input type="submit" value="Assign Selected Volunteers">
+            </div>
+        </form>
+    </div>
 </body>
 </html>

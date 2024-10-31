@@ -46,7 +46,7 @@ def register():
         user_data = pd.DataFrame({
             'email': [email],
             'password': [hashed_password],
-            'role': [role]  # Automatically sets role as 'volunteer'
+            'role': [role]  
         })
 
         user_data.to_sql('Users', engine, if_exists='append', index=False)

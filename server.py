@@ -26,8 +26,6 @@ engine = create_engine('sqlite:///database.db')
 def splash_screen():
     return render_template('index.html')
 
-
-
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -60,16 +58,17 @@ def register():
 
 @app.route("/login", methods=['POST'])
 def login():
-    email_or_username = request.form['username']
-    password = request.form['password']
+    email = request.form.get('email')
+    password = request.form.get('password')
+
+    if not email or not password:
+        return "Email or password not provided.", 400
 
     user_query = "SELECT * FROM Users WHERE email = :email"
-    user_df = pd.read_sql(user_query,
-                          engine,
-                          params={'email': email_or_username})
+    user_df = pd.read_sql(user_query, engine, params={'email': email})
 
     if user_df.empty:
-        return "Invalid username or password."
+        return "Invalid email or password."
 
     user = user_df.iloc[0]
 
@@ -83,7 +82,7 @@ def login():
         else:
             return redirect(url_for('volunteer_profile'))
     else:
-        return "Invalid username or password."
+        return "Invalid email or password."
 
 
 @app.route('/admin_profile')

@@ -126,6 +126,7 @@ def add_event():
 
         event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
 
+        # Insert event data into Events table
         event_data = pd.DataFrame({
             'event_name': [event_name],
             'event_description': [event_description],
@@ -137,10 +138,30 @@ def add_event():
         })
 
         try:
-            event_data.to_sql('Events',
-                              engine,
-                              if_exists='append',
-                              index=False)
+            # Save the event to the Events table
+            event_data.to_sql('Events', engine, if_exists='append', index=False)
+
+            # Create notifications for all users
+            all_users_query = "SELECT id AS user_id FROM Users"
+            all_users_df = pd.read_sql(all_users_query, engine)
+
+            # Prepare notification entries for all users
+            notifications_data = []
+            for user_id in all_users_df['user_id']:
+                notifications_data.append({
+                    'user_id': user_id,
+                    'event_name': event_name,
+                    'event_description': event_description,
+                    'location': location,
+                    'notifications_date': event_date,
+                    'read_status': 0
+                })
+            
+            # Insert notifications into Notifications table
+            if notifications_data:
+                notifications_df = pd.DataFrame(notifications_data)
+                notifications_df.to_sql('Notifications', engine, if_exists='append', index=False)
+
         except Exception as e:
             print(e)
             return "Error: Failed to create event."
@@ -148,6 +169,7 @@ def add_event():
         return redirect(url_for('admin_profile'))
     else:
         return render_template('add_event.html')
+
 
 @app.route('/manage_events')
 def manage_events():
@@ -224,7 +246,46 @@ def notifications():
         return redirect(url_for('splash_screen'))
 
     user_id = session['user_id']
-    # Fetch notifications for the logged-in user, sorted by date
+
+    # Fetch user skills
+    user_skills_query = """
+        SELECT skill_name
+        FROM Skills
+        JOIN Volunteer_Skills ON Skills.id = Volunteer_Skills.skill_id
+        WHERE Volunteer_Skills.user_id = :user_id
+    """
+    user_skills_df = pd.read_sql(user_skills_query, engine, params={'user_id': user_id})
+    user_skills = set(user_skills_df['skill_name'].tolist())
+
+    # Find events with matching skills that don't already have a notification for this user
+    matching_events_query = """
+        SELECT id, event_name, event_description, location, required_skills, event_date
+        FROM Events
+        WHERE event_date >= DATE('now', '-1 day')  -- Events happening today or later
+        AND (
+            SELECT COUNT(1)
+            FROM Notifications
+            WHERE Notifications.user_id = :user_id
+            AND Notifications.event_name = Events.event_name
+        ) = 0
+    """
+    matching_events_df = pd.read_sql(matching_events_query, engine, params={'user_id': user_id})
+
+    # Check if any required skills match user skills and create notifications
+    for _, event in matching_events_df.iterrows():
+        event_skills = set(event['required_skills'].split(','))
+        if user_skills.intersection(event_skills):  # Check if there's at least one matching skill
+            notification_data = pd.DataFrame({
+                'user_id': [user_id],
+                'event_name': [event['event_name']],
+                'event_description': [event['event_description']],
+                'location': [event['location']],
+                'notifications_date': [datetime.now()],
+                'read_status': [0]
+            })
+            notification_data.to_sql('Notifications', engine, if_exists='append', index=False)
+
+    # Fetch all notifications for the logged-in user, sorted by date
     notifications_query = """
         SELECT id, event_name, event_description, location, notifications_date, read_status
         FROM Notifications

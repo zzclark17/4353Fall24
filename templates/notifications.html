@@ -98,7 +98,7 @@
                 <div>
                     <strong>{{ notification['event_name'] }}: {{ notification['event_description'] }}</strong>
                     <p>Location: {{ notification['location'] }}</p>
-                    <div class="timestamp">Received: {{ notification['notification_date'] }}</div>
+                    <div class="timestamp">Event Date: {{ notification['notifications_date'] }}</div>
                 </div>
                 <div class="actions">
                     {% if not notification['read_status'] %}

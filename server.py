@@ -30,20 +30,21 @@ def splash_screen():
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        
+        if not email or not password:
+            return "Error: Email and password are required."
+
         hashed_password = generate_password_hash(password)
 
-        # Automatically set role to 'volunteer' if it's not specified
         role = 'volunteer'
 
-        # Check if the user already exists
         existing_user_query = "SELECT * FROM Users WHERE email = :email"
         existing_user_df = pd.read_sql(existing_user_query, engine, params={'email': email})
         if not existing_user_df.empty:
             return "Error: A user with this email already exists."
 
-        # Save the new user's data
         user_data = pd.DataFrame({
             'email': [email],
             'password': [hashed_password],
@@ -55,6 +56,7 @@ def register():
         return "Registration Successful!"
     else:
         return render_template('registration.html')
+
 
 
 @app.route("/login", methods=['POST'])
@@ -109,7 +111,70 @@ def logout():
     session.clear()
     return redirect(url_for('splash_screen'))
 
+@app.route('/add_event', methods=['GET', 'POST'])
+def add_event():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('splash_screen'))
 
+    if request.method == 'POST':
+        event_name = request.form['event_name']
+        event_description = request.form['event_description']
+        location = request.form['location']
+        required_skills_list = request.form.getlist('required_skills[]')
+        required_skills = ','.join(required_skills_list)
+        urgency = request.form['urgency']
+        event_date_str = request.form['event_date']
+
+        # Attempt to parse the date
+        try:
+            event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return "Error: Invalid date format. Please use YYYY-MM-DD."
+
+        # Continue with the rest of the event creation process...
+        event_data = pd.DataFrame({
+            'event_name': [event_name],
+            'event_description': [event_description],
+            'location': [location],
+            'required_skills': [required_skills],
+            'urgency': [urgency],
+            'event_date': [event_date],
+            'created_by': [session['user_id']]
+        })
+
+        try:
+            # Save the event to the Events table
+            event_data.to_sql('Events', engine, if_exists='append', index=False)
+
+            # Create notifications for all users
+            all_users_query = "SELECT id AS user_id FROM Users"
+            all_users_df = pd.read_sql(all_users_query, engine)
+
+            # Prepare notification entries for all users
+            notifications_data = []
+            for user_id in all_users_df['user_id']:
+                notifications_data.append({
+                    'user_id': user_id,
+                    'event_name': event_name,
+                    'event_description': event_description,
+                    'location': location,
+                    'notifications_date': event_date,
+                    'read_status': 0
+                })
+
+            # Insert notifications into Notifications table
+            if notifications_data:
+                notifications_df = pd.DataFrame(notifications_data)
+                notifications_df.to_sql('Notifications', engine, if_exists='append', index=False)
+
+        except Exception as e:
+            print(e)
+            return "Error: Failed to create event."
+
+        return redirect(url_for('admin_profile'))
+    else:
+        return render_template('add_event.html')
+'''WORKSS
 @app.route('/add_event', methods=['GET', 'POST'])
 def add_event():
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -169,7 +234,7 @@ def add_event():
         return redirect(url_for('admin_profile'))
     else:
         return render_template('add_event.html')
-
+'''
 
 @app.route('/manage_events')
 def manage_events():

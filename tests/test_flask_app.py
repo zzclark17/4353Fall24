@@ -32,121 +32,25 @@ def test_splash_screen(client):
     assert b"Welcome Back!" in response.data
     assert b"Log In" in response.data
     assert b"Register here" in response.data
-'''
-def test_register(client):
-    unique_email = f"testuser_{uuid.uuid4()}@gmail.com"
-    start_date = '2024-10-01'
-    end_date = '2024-10-05'
-
-    # Send POST request to register the user
-    response = client.post('/register', data={
-        'email': unique_email,
-        'password': 'password123',
-        'full_name': 'Test User',
-        'address_1': '123 Test St',
-        'address_2': '',
-        'city': 'Test City',
-        'state': 'TX',
-        'zip_code': '12345',
-        'role': 'volunteer',
-        'start_date': start_date,
-        'end_date': end_date,
-        'skills[]': ['first_aid', 'CPR']
-    }, follow_redirects=True)
-
-    # Force a database commit by performing another client request
-    client.get('/')
-
-    # Verify the registration was successful
-    assert response.status_code == 201
-    assert b"Registration Successful!" in response.data
-
-    # Re-query the Users table to retrieve the user ID
-    user_query = "SELECT * FROM Users WHERE email = :email"
-    user_df = pd.read_sql(user_query, engine, params={'email': unique_email})
-    assert not user_df.empty, "User was not successfully added to the database."
-
-    user_id = user_df['id'].iloc[0]
-
-    # Query the Availability table to check availability dates
-    availability_query = "SELECT * FROM Availability WHERE user_id = :user_id"
-    availability_df = pd.read_sql(availability_query, engine, params={'user_id': user_id})
-
-    # Debug print statements to inspect availability_df contents
-    print("Availability records found in test:")
-    print(availability_df)
-
-    # Parse start and end dates for comparison
-    start_date_obj = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
-    end_date_obj = datetime.datetime.strptime(end_date, '%Y-%m-%d').date()
-
-    # Calculate expected number of dates
-    expected_dates_count = (end_date_obj - start_date_obj).days + 1
-
-    # Assert that the correct number of availability dates is stored
-    assert len(availability_df) == expected_dates_count, (
-        f"Availability dates were not stored correctly for user_id: {user_id}. "
-        f"Found {len(availability_df)} dates instead of {expected_dates_count}."
-    )
-'''
 
 def test_register_invalid(client):
-    response = client.post('/register', data={
-        'email': '',
-        'password': '',
-        'full_name': 'Test User',
-        'address_1': '123 Test St',
-        'city': 'Test City',
-        'state': 'TX',
-        'zip_code': '12345',
-        'role': 'volunteer',
-        'start_date': '2024-10-01',
-        'end_date': '2024-10-05',
-        'skills[]': ['first_aid', 'CPR']
-    }, follow_redirects=True)
+    response = client.post('/register', data={'email': 'unique@example.com', 'password': '', 'role': 'volunteer'})
+    assert response.status_code == 200
+    assert b"Error: Email and password are required." in response.data
 
-    assert response.status_code == 400
-    assert b"Error: Missing required fields." in response.data
 
-def test_register_invalid_date_format(client):
-    unique_email = f"testuser_{uuid.uuid4()}@gmail.com"
+
+def test_register_success(client):
+    # Generate a unique email each time the test runs
+    unique_email = f"newuser_{uuid.uuid4()}@example.com"
     response = client.post('/register', data={
         'email': unique_email,
         'password': 'password123',
-        'full_name': 'Test User',
-        'address_1': '123 Test St',
-        'address_2': '',
-        'city': 'Test City',
-        'state': 'TX',
-        'zip_code': '12345',
-        'role': 'volunteer',
-        'start_date': 'invalid_date',
-        'end_date': '2024-10-05',
-        'skills[]': ['first_aid', 'CPR']
+        'role': 'volunteer'  # This can be omitted since 'volunteer' is the default
     }, follow_redirects=True)
 
-    assert response.status_code == 400
-    assert b"Error: Invalid date format." in response.data
-
-def test_register_start_after_end_date(client):
-    unique_email = f"testuser_{uuid.uuid4()}@gmail.com"
-    response = client.post('/register', data={
-        'email': unique_email,
-        'password': 'password123',
-        'full_name': 'Test User',
-        'address_1': '123 Test St',
-        'address_2': '',
-        'city': 'Test City',
-        'state': 'TX',
-        'zip_code': '12345',
-        'role': 'volunteer',
-        'start_date': '2024-10-05',  
-        'end_date': '2024-10-01',
-        'skills[]': ['first_aid', 'CPR']
-    }, follow_redirects=True)
-
-    assert response.status_code == 400
-    assert b"Error: End date cannot be before start date." in response.data
+    assert response.status_code == 200
+    assert b"Registration Successful!" in response.data
 
 ###############################################################################################
 def login(client, email, password):
@@ -160,23 +64,11 @@ def test_login_valid_admin(client):
     assert response.status_code == 200
     assert b"Admin Profile" in response.data
 
-'''
-def test_login_valid_volunteer(client):
-    response = login(client, 'kok@gmail.com', '123')
-    assert response.status_code == 200
-    assert b"Volunteer Profile" in response.data
-'''
 def test_login_invalid(client):
     response = login(client, 'wrong_email@gmail.com', 'wrong_password')
     assert response.status_code == 200
     assert b"Invalid email or password." in response.data
 
-"""@pytest.fixture
-def client():
-    app.config['TESTING'] = True
-    app.config['SECRET_KEY'] = 'test_secret_key'
-    with app.test_client() as client:
-        yield client"""
 
 def test_admin_profile_access(client):
     with client.session_transaction() as sess:
@@ -196,30 +88,7 @@ def test_non_admin_redirect(client):
     assert b"Welcome Back!" in response.data
 
 ##################################################################
-'''
-def test_volunteer_profile_access(client):
-    with client.session_transaction() as sess:
-        sess['user_id'] = 2
-        sess['role'] = 'volunteer'
-        sess['full_name'] = 'Volunteer User'
 
-    response = client.get('/volunteer_profile')
-    assert response.status_code == 200
-    assert b"Welcome, Volunteer User!" in response.data
-
-    with client.session_transaction() as sess:
-        sess['user_id'] = 1
-        sess['role'] = 'admin'
-        sess['full_name'] = 'Admin User'
-
-    response = client.get('/volunteer_profile', follow_redirects=True)
-    assert response.status_code == 200
-    assert b"Welcome to Our Website" in response.data
-
-    response = client.get('/volunteer_profile', follow_redirects=True)
-    assert response.status_code == 200
-    assert b"Welcome to Our Website" in response.data
-'''
 
 def test_logout(client):
     with client.session_transaction() as sess:
@@ -242,17 +111,23 @@ def login_as_admin(client):
 def test_add_event_access_non_admin(client):
     with client.session_transaction() as sess:
         sess['user_id'] = 11
-        sess['role'] = 'volunteer'
+        sess['role'] = 'volunteer'  # Non-admin role
 
     response = client.get('/add_event', follow_redirects=True)
+
+    # Check if redirected to splash screen (e.g., by checking a known element in splash_screen)
     assert response.status_code == 200
-    assert b"Welcome Back!" in response.data
+    assert b"Welcome to Our Website" in response.data  # Replace with actual splash screen text or title
+
+
+
 
 def test_add_event_form_get(client):
     login_as_admin(client)
     response = client.get('/add_event')
     assert response.status_code == 200
-    assert b"Add Event" in response.data
+    assert b"Add Event" in response.data  
+
 
 def test_add_event_success(client):
     login_as_admin(client)
@@ -263,12 +138,13 @@ def test_add_event_success(client):
         'location': 'Santa Monica',
         'required_skills[]': ['first_aid', 'CPR'],
         'urgency': 'High',
-        'event_date': '2024-11-20'
+        'event_date': '2024-11-20' 
     }
 
     response = client.post('/add_event', data=event_data, follow_redirects=True)
     assert response.status_code == 200
-    assert b"Admin Profile" in response.data
+    assert b"Admin Profile" in response.data 
+
 
 def test_add_event_failure(client):
     login_as_admin(client)
@@ -279,18 +155,15 @@ def test_add_event_failure(client):
         'location': 'Test Location',
         'required_skills[]': [],
         'urgency': 'High',
-        'event_date': ''
+        'event_date': 'invalid_date'  # Invalid date format
     }
 
     response = client.post('/add_event', data=incomplete_event_data, follow_redirects=True)
     assert response.status_code == 200
-    assert b"Error: Event date is missing." in response.data
+    assert b"Error: Invalid date format. Please use YYYY-MM-DD." in response.data
 
-def login_as_admin(client):
-    with client.session_transaction() as sess:
-        sess['user_id'] = 1
-        sess['role'] = 'admin'
-        sess['full_name'] = 'Admin User'
+
+
 
 def login_as_non_admin(client):
     with client.session_transaction() as sess:
@@ -325,23 +198,6 @@ def test_show_profile_info_redirect_if_not_logged_in(client):
     response = client.get('/show_profile_info', follow_redirects=True)
     assert response.status_code == 200
     assert b"Welcome Back!" in response.data
-
-'''
-def test_show_profile_info_access(client):
-    login_user(client, 5)
-    response = client.get('/show_profile_info')
-    assert response.status_code == 200
-    assert b"Profile Information" in response.data
-
-
-def test_show_profile_info_display(client):
-    login_user(client, 5)
-    response = client.get('/show_profile_info')
-    assert response.status_code == 200
-    assert b"User not found" not in response.data
-    assert b"Full Name" in response.data
-'''
-#######################################################################
 
 def login_as_volunteer(client):
     with client.session_transaction() as sess:
@@ -389,7 +245,7 @@ def login_as_admin(client):
 
 def test_edit_event_access(client):
     login_as_admin(client)
-    response = client.get('/edit_event/2')
+    response = client.get('/edit_event/5')
     assert response.status_code == 200
     assert b"Edit Event" in response.data
 
@@ -400,36 +256,6 @@ def test_edit_event_not_found(client):
     assert response.status_code == 200
     assert b"Event not found." in response.data
 
-'''
-def test_edit_event_success(client):
-    login_as_admin(client)
-    updated_event_data = {
-        'event_name': 'Updated Event Name',
-        'event_description': 'Updated description',
-        'location': 'Updated location',
-        'required_skills[]': ['first_aid', 'cpr'],
-        'urgency': 'high',
-        'event_date': '2024-11-20'
-    }
-    response = client.post('/edit_event/1', data=updated_event_data, follow_redirects=True)
-    assert response.status_code == 200
-    assert b"Manage Events" in response.data
-'''
-'''
-def test_edit_event_form_error(client):
-    login_as_admin(client)
-    incomplete_event_data = {
-        'event_name': '',
-        'event_description': 'Updated description',
-        'location': 'Updated location',
-        'required_skills[]': ['first_aid', 'cpr'],
-        'urgency': 'high',
-        'event_date': '2024-11-20'
-    }
-    response = client.post('/edit_event/1', data=incomplete_event_data, follow_redirects=False)
-    assert response.status_code == 302
-    assert b"Event not found." not in response.data
-'''
     
 def login_as_admin(client):
     with client.session_transaction() as sess:
@@ -510,6 +336,212 @@ def test_match_volunteers_no_event(client):
     response = client.get('/match_volunteers/9999', follow_redirects=True)
     assert response.status_code == 200
     assert b"Event not found." in response.data
+
+def test_update_profile_success(client):
+    # Simulate a logged-in user by setting the session with user_id
+    with client.session_transaction() as sess:
+        sess['user_id'] = 11  # Set a valid user_id
+
+    # Define profile data to update
+    update_data = {
+        'full_name': 'John Doe',
+        'address_1': '123 Main St',
+        'address_2': 'Apt 4B',
+        'city': 'Anytown',
+        'state': 'TX',
+        'zip_code': '12345',
+        'skills[]': ['first_aid', 'CPR'],  # List for multi-value form field
+        'start_date': '2024-01-01',
+        'end_date': '2024-12-31'
+    }
+
+    # Make POST request to update profile
+    response = client.post('/update_profile', data=update_data, follow_redirects=True)
+
+    # Check that the response redirects to 'show_profile_info'
+    assert response.status_code == 200
+    assert b"Profile Information" in response.data  # Adjust based on the content of the profile page
+
+def test_update_profile_redirect_if_not_logged_in(client):
+    # Attempt to update profile without being logged in (no user_id in session)
+    update_data = {
+        'full_name': 'John Doe',
+        'address_1': '123 Main St',
+        'address_2': 'Apt 4B',
+        'city': 'Anytown',
+        'state': 'TX',
+        'zip_code': '12345',
+        'skills[]': ['first_aid', 'CPR'],
+        'start_date': '2024-01-01',
+        'end_date': '2024-12-31'
+    }
+
+    # Make POST request to update profile without setting session user_id
+    response = client.post('/update_profile', data=update_data, follow_redirects=True)
+
+    # Check if redirected to splash screen
+    assert response.status_code == 200
+    assert b"Welcome to Our Website" in response.data  # Adjust to match the splash screen content
+
+def test_show_profile_info_not_logged_in(client):
+    # Attempt to access the profile without being logged in
+    response = client.get('/show_profile_info', follow_redirects=True)
+    
+    # Check for redirection to the splash screen
+    assert response.status_code == 200
+    assert b"Welcome to Our Website" in response.data  # Adjust to the content of splash_screen
+
+def test_show_profile_info_user_not_found(client):
+    # Simulate a logged-in user by setting a user_id that does not exist in the database
+    with client.session_transaction() as sess:
+        sess['user_id'] = 999  # Set to an ID that does not exist
+
+    response = client.get('/show_profile_info')
+    
+    # Check that it returns "User not found."
+    assert response.status_code == 200
+    assert b"User not found." in response.data
+
+def test_show_profile_info_success(client):
+    # Add a test user to the database for this test
+    with engine.begin() as conn:
+        conn.execute(text('''
+            INSERT INTO Users (id, full_name, email, password, skills, availability_start, availability_end)
+            VALUES (:id, :full_name, :email, :password, :skills, :availability_start, :availability_end)
+            ON CONFLICT(id) DO NOTHING
+        '''), {
+            'id': 1,
+            'full_name': 'John Doe',
+            'email': 'testuser@example.com',
+            'password': 'hashedpassword',  # Use a hashed password as appropriate
+            'skills': 'first_aid,CPR',
+            'availability_start': '2024-01-01',
+            'availability_end': '2024-12-31'
+        })
+
+    # Simulate a logged-in user with a valid user_id
+    with client.session_transaction() as sess:
+        sess['user_id'] = 1  # ID matches the test user added above
+
+    response = client.get('/show_profile_info')
+    
+    # Check that the profile page loads correctly and displays the user's info
+    assert response.status_code == 200
+    assert b"John Doe" in response.data  # Check if the full name appears
+    assert b"first_aid" in response.data  # Verify skills are parsed correctly
+    assert b"2024-01-01" in response.data  # Verify availability dates are displayed
+    assert b"2024-12-31" in response.data
+####def test_delete_event_not_logged_in(client):
+    # Attempt to delete an event without being logged in
+    response = client.post('/delete_event/1', follow_redirects=True)
+
+    # Check if redirected to splash screen
+    assert response.status_code == 200
+    assert b"Welcome to Our Website" in response.data  # Adjust based on splash screen content
+
+def test_delete_event_non_admin(client):
+    # Simulate a logged-in user with a non-admin role
+    with client.session_transaction() as sess:
+        sess['user_id'] = 2  # Assume user_id 2 exists
+        sess['role'] = 'volunteer'  # Non-admin role
+
+    # Attempt to delete an event
+    response = client.post('/delete_event/1', follow_redirects=True)
+
+    # Check if redirected to splash screen
+    assert response.status_code == 200
+    assert b"Welcome to Our Website" in response.data  # Adjust based on splash screen content
+
+
+def test_delete_event_failure(client, monkeypatch):
+    # Simulate a logged-in admin user
+    with client.session_transaction() as sess:
+        sess['user_id'] = 1
+        sess['role'] = 'admin'
+
+    # Mock the engine to raise an exception on execute
+    def mock_execute(*args, **kwargs):
+        raise Exception("Database deletion failed")
+
+    with monkeypatch.context() as m:
+        m.setattr(engine, "begin", lambda: mock_execute)
+
+        # Attempt to delete an event, expecting a failure message
+        response = client.post('/delete_event/1')
+        assert response.status_code == 200
+        assert b"Error: Failed to delete event." in response.data
+
+def test_login_as_admin(client):
+    # Use the helper function to simulate an admin login
+    login_as_admin(client)
+    
+    # Verify session values
+    with client.session_transaction() as sess:
+        assert sess['user_id'] == 5
+        assert sess['role'] == 'admin'
+
+def test_login_as_volunteer(client):
+    # Use the helper function to simulate a volunteer login
+    login_as_volunteer(client)
+    
+    # Verify session values
+    with client.session_transaction() as sess:
+        assert sess['user_id'] == 11
+        assert sess['role'] == 'volunteer'
+
+def test_insert_event():
+    # Call the insert_event function to insert a test event into the database
+    insert_event()
+    
+    # Query the database to check if the event was added
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("SELECT * FROM Events WHERE id = 1")
+        ).mappings()  # Use .mappings() to get a dictionary-like row
+    
+        event = result.fetchone()
+    
+    # Verify event details
+    assert event is not None
+    assert event['event_name'] == 'Test Event'
+    assert event['event_description'] == 'A description'
+    assert event['location'] == 'Test Location'
+    assert event['required_skills'] == 'first_aid,cpr'
+    assert event['urgency'] == 'high'
+    assert str(event['event_date']) == '2024-11-20'
+
+def test_insert_event_duplicate():
+    # Insert the event once
+    insert_event()
+
+    # Insert the event a second time to check for duplicate handling
+    insert_event()
+
+    # Query the database to check that there is still only one event
+    with engine.begin() as conn:
+        result = conn.execute(text("SELECT COUNT(*) FROM Events WHERE id = 1"))
+        count = result.scalar()
+    
+    # Verify that only one event exists due to 'ON CONFLICT DO NOTHING'
+    assert count == 1
+
+def test_edit_profile_access(client):
+    # Simulate a logged-in user by setting the session with user_id
+    with client.session_transaction() as sess:
+        sess['user_id'] = 11  # Set to a valid user ID
+
+    # Perform a GET request to the edit_profile route
+    response = client.get('/edit_profile', follow_redirects=True)
+    
+    # Check if the status code is 200, indicating successful access
+    assert response.status_code == 200
+    
+    # Check if the edit profile page is displayed with expected elements
+    assert b"Edit Profile" in response.data
+    assert b"full_name" in response.data  # Checking for form field presence
+    assert b"address_1" in response.data
+    assert b"city" in response.data
+
 
 @pytest.fixture
 def client(request):

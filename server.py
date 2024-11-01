@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy import text
+from sqlalchemy import insert
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 
@@ -148,7 +149,6 @@ def add_event():
     else:
         return render_template('add_event.html')
 
-
 @app.route('/manage_events')
 def manage_events():
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -223,7 +223,37 @@ def notifications():
     if 'user_id' not in session:
         return redirect(url_for('splash_screen'))
 
-    return render_template('notifications.html')
+    user_id = session['user_id']
+    # Fetch notifications for the logged-in user, sorted by date
+    notifications_query = """
+        SELECT id, event_name, event_description, location, notifications_date, read_status
+        FROM Notifications
+        WHERE user_id = :user_id
+        ORDER BY notifications_date DESC
+    """
+    notifications_df = pd.read_sql(notifications_query, engine, params={'user_id': user_id})
+
+    # Convert DataFrame to a list of dictionaries for rendering
+    notifications = notifications_df.to_dict(orient='records')
+
+    return render_template('notifications.html', notifications=notifications)
+
+
+@app.route('/mark_notification_read/<int:notification_id>', methods=['POST'])
+def mark_notification_read(notification_id):
+    if 'user_id' not in session:
+        return redirect(url_for('splash_screen'))
+
+    user_id = session['user_id']
+    update_query = """
+        UPDATE Notifications
+        SET read_status = 1
+        WHERE id = :notification_id AND user_id = :user_id
+    """
+    with engine.begin() as conn:
+        conn.execute(text(update_query), {'notification_id': notification_id, 'user_id': user_id})
+
+    return '', 204  # Return a no-content response
 
 
 @app.route('/edit_event/<int:event_id>', methods=['GET', 'POST'])
@@ -289,7 +319,7 @@ def delete_event(event_id):
     if 'user_id' not in session or session.get('role') != 'admin':
         return redirect(url_for('splash_screen'))
 
-    delete_query = "DELETE FROM Events WHERE id = :event_id"
+    delete_query = text("DELETE FROM Events WHERE id = :event_id")
     try:
         with engine.begin() as conn:
             conn.execute(delete_query, {'event_id': event_id})

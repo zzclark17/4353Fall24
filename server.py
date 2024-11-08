@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy import insert
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
+from datetime import date
 
 app = Flask(__name__)
 
@@ -279,21 +280,46 @@ def assigned_events():
 
     # SQL query to fetch assigned events for the logged-in volunteer
     assigned_events_query = """
-        SELECT Events.event_name, Events.event_date, Events.location, VolunteerAssignments.role
+        SELECT VolunteerAssignments.id AS assignment_id, Events.event_name, Events.event_date, Events.location, VolunteerAssignments.role
         FROM VolunteerAssignments
         JOIN Events ON VolunteerAssignments.event_id = Events.id
         WHERE VolunteerAssignments.user_id = :user_id
+          AND VolunteerAssignments.cancelled = 0
         ORDER BY Events.event_date ASC
     """
 
     # Execute the query
     assigned_events_df = pd.read_sql(assigned_events_query, engine, params={'user_id': session['user_id']})
 
-    # Convert DataFrame to a list of dictionaries for rendering in the template
+    # Convert DataFrame to list of dictionaries
     assigned_events = assigned_events_df.to_dict(orient='records')
 
-    # Render the assigned events page
-    return render_template('assigned_events.html', assigned_events=assigned_events)
+    # Convert event_date from string to date in each event dictionary
+    for event in assigned_events:
+        event['event_date'] = datetime.strptime(event['event_date'], '%Y-%m-%d').date()
+
+    # Render template
+    return render_template('assigned_events.html', assigned_events=assigned_events, current_date=date.today())
+
+@app.route('/cancel_assignment/<int:assignment_id>', methods=['POST'])
+def cancel_assignment(assignment_id):
+    if 'user_id' not in session or session.get('role') != 'volunteer':
+        return redirect(url_for('splash_screen'))
+
+    # Update the assignment as canceled if the event date is in the future
+    cancel_query = """
+        UPDATE VolunteerAssignments
+        SET cancelled = 1
+        WHERE id = :assignment_id
+          AND user_id = :user_id
+          AND EXISTS (
+            SELECT 1 FROM Events WHERE Events.id = VolunteerAssignments.event_id AND Events.event_date > CURRENT_DATE
+          )
+    """
+    with engine.connect() as conn:
+        conn.execute(text(cancel_query), {'assignment_id': assignment_id, 'user_id': session['user_id']})
+
+    return redirect(url_for('assigned_events'))
 
 
 @app.route('/notifications')
@@ -542,9 +568,8 @@ def match_volunteers(event_id):
 
     event = event_df.iloc[0]
     required_skills = set(event['required_skills'].split(',')) if event['required_skills'] else set()
-
-    # Ensure event_date is a date object
     event_date = event['event_date']
+    
     if isinstance(event_date, str):
         event_date = datetime.strptime(event_date, '%Y-%m-%d').date()
     elif isinstance(event_date, pd.Timestamp):
@@ -557,16 +582,11 @@ def match_volunteers(event_id):
     """
     users_df = pd.read_sql(users_query, engine, index_col=None)
 
-    # Initialize an empty list for matching volunteers
     matching_volunteers = []
 
     for idx, user in users_df.iterrows():
-        # Convert user skills to a set
         user_skills = set(user['skills'].split(',')) if pd.notnull(user['skills']) else set()
-
-        # Check if the user's skills match the required skills
         if not required_skills or user_skills & required_skills:
-            # Convert availability_start and availability_end to date objects, if they exist
             availability_start = user['availability_start']
             availability_end = user['availability_end']
 
@@ -582,38 +602,32 @@ def match_volunteers(event_id):
                 elif isinstance(availability_end, pd.Timestamp):
                     availability_end = availability_end.date()
 
-            # Check if the volunteer is available on the event date
             if availability_start and availability_end and availability_start <= event_date <= availability_end:
                 user_dict = user.to_dict()
                 user_dict['start_date_str'] = availability_start.strftime('%Y-%m-%d') if availability_start else ''
                 user_dict['end_date_str'] = availability_end.strftime('%Y-%m-%d') if availability_end else ''
                 matching_volunteers.append(user_dict)
 
-    # Process POST request to assign volunteers and populate Volunteer_History
     if request.method == 'POST':
         selected_volunteer_ids = [int(vol_id) for vol_id in request.form.getlist('volunteer_ids')]
 
-        # Insert into VolunteerAssignments and Volunteer_History tables
-        assignment_data = pd.DataFrame({'event_id': [event_id] * len(selected_volunteer_ids), 'user_id': selected_volunteer_ids})
+        # Insert into VolunteerAssignments table
+        assignment_data = pd.DataFrame({
+            'event_id': [event_id] * len(selected_volunteer_ids),
+            'user_id': selected_volunteer_ids,
+            'role': ['volunteer'] * len(selected_volunteer_ids),
+            'status': ['active'] * len(selected_volunteer_ids),  # New field indicating assignment status
+            'cancelled': [0] * len(selected_volunteer_ids)       # 0 means not canceled
+        })
+
         try:
             assignment_data.to_sql('VolunteerAssignments', engine, if_exists='append', index=False)
-
-            # Populate Volunteer_History with "No Show" as default
-            history_data = pd.DataFrame({
-                'volunteer_id': selected_volunteer_ids,
-                'event_id': [event_id] * len(selected_volunteer_ids),
-                'participation_status': ['No Show'] * len(selected_volunteer_ids),
-                'hours_volunteered': [0] * len(selected_volunteer_ids),
-                'feedback': [''] * len(selected_volunteer_ids)
-            })
-            history_data.to_sql('Volunteer_History', engine, if_exists='append', index=False)
-
         except Exception as e:
             print(e)
             return f"Error: Failed to assign volunteers. {e}"
 
         return redirect(url_for('manage_events'))
-    
+
     return render_template('match_volunteers.html', event=event, volunteers=matching_volunteers)
 
 

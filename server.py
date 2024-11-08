@@ -308,31 +308,70 @@ def cancel_assignment(assignment_id):
     if 'user_id' not in session or session.get('role') != 'volunteer':
         return redirect(url_for('splash_screen'))
 
-    # Simplified query to update the assignment's cancelled status
+    user_id = session['user_id']
+    
+    # Query to update the assignment's canceled status in VolunteerAssignments
     cancel_query = """
         UPDATE VolunteerAssignments
         SET cancelled = 1
         WHERE id = :assignment_id
           AND user_id = :user_id
     """
-
+    
+    # Query to get the event_id from VolunteerAssignments
+    get_event_query = """
+        SELECT event_id FROM VolunteerAssignments WHERE id = :assignment_id AND user_id = :user_id
+    """
+    
+    # Insert a "Cancelled" entry into Volunteer_History if not already present
+    insert_history_query = """
+        INSERT INTO Volunteer_History (volunteer_id, event_id, participation_status, hours_volunteered, feedback)
+        VALUES (:user_id, :event_id, 'Cancelled', 0, '')
+    """
+    
     try:
-        # Execute the update query with explicit commit
         with engine.connect() as conn:
-            result = conn.execute(text(cancel_query), {'assignment_id': assignment_id, 'user_id': session['user_id']})
-            conn.commit()  # Explicitly commit the transaction
+            trans = conn.begin()  # Start transaction
+            
+            # Update the cancellation status
+            result = conn.execute(text(cancel_query), {'assignment_id': assignment_id, 'user_id': user_id})
+            
+            if result.rowcount == 0:
+                print("No rows updated: Assignment may not exist or another condition prevented the update.")
+            else:
+                print(f"Successfully canceled assignment with ID {assignment_id}")
+            
+            # Retrieve the event_id associated with the assignment
+            event_result = conn.execute(text(get_event_query), {'assignment_id': assignment_id, 'user_id': user_id})
+            event_row = event_result.fetchone()
+            
+            if event_row is not None:
+                event_id = event_row[0]  # Access the first column directly
+                print(f"Found event_id {event_id} for assignment ID {assignment_id}")
 
-        # Check if any rows were actually updated
-        if result.rowcount == 0:
-            print("No rows updated: Assignment may not exist or other condition prevented the update.")
-        else:
-            print(f"Successfully canceled assignment with ID {assignment_id}")
+                # Check if the entry already exists in Volunteer_History
+                history_check_query = """
+                    SELECT 1 FROM Volunteer_History WHERE volunteer_id = :user_id AND event_id = :event_id
+                """
+                history_check_result = conn.execute(text(history_check_query), {'user_id': user_id, 'event_id': event_id})
+                
+                if history_check_result.fetchone() is None:
+                    # Insert into Volunteer_History if no entry exists
+                    conn.execute(text(insert_history_query), {'user_id': user_id, 'event_id': event_id})
+                    print(f"Added to Volunteer_History with 'Cancelled' status for assignment ID {assignment_id}")
+                else:
+                    print("History entry already exists, skipping insertion.")
+            else:
+                print(f"No event found for assignment ID {assignment_id}")
+
+            trans.commit()  # Commit transaction
 
     except SQLAlchemyError as e:
-        print(f"Error canceling assignment: {e}")
-        return "An error occurred while canceling the assignment.", 500
+        print(f"Error during cancel and history insertion: {e}")
+        return "An error occurred while canceling the assignment and updating history.", 500
 
     return redirect(url_for('assigned_events'))
+
 
 @app.route('/notifications')
 def notifications():

@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import pandas as pd
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import create_engine
 from sqlalchemy import text
 from sqlalchemy import insert
@@ -303,24 +304,35 @@ def assigned_events():
 
 @app.route('/cancel_assignment/<int:assignment_id>', methods=['POST'])
 def cancel_assignment(assignment_id):
+    # Check if the user is logged in and is a volunteer
     if 'user_id' not in session or session.get('role') != 'volunteer':
         return redirect(url_for('splash_screen'))
 
-    # Update the assignment as canceled if the event date is in the future
+    # Simplified query to update the assignment's cancelled status
     cancel_query = """
         UPDATE VolunteerAssignments
         SET cancelled = 1
         WHERE id = :assignment_id
           AND user_id = :user_id
-          AND EXISTS (
-            SELECT 1 FROM Events WHERE Events.id = VolunteerAssignments.event_id AND Events.event_date > CURRENT_DATE
-          )
     """
-    with engine.connect() as conn:
-        conn.execute(text(cancel_query), {'assignment_id': assignment_id, 'user_id': session['user_id']})
+
+    try:
+        # Execute the update query with explicit commit
+        with engine.connect() as conn:
+            result = conn.execute(text(cancel_query), {'assignment_id': assignment_id, 'user_id': session['user_id']})
+            conn.commit()  # Explicitly commit the transaction
+
+        # Check if any rows were actually updated
+        if result.rowcount == 0:
+            print("No rows updated: Assignment may not exist or other condition prevented the update.")
+        else:
+            print(f"Successfully canceled assignment with ID {assignment_id}")
+
+    except SQLAlchemyError as e:
+        print(f"Error canceling assignment: {e}")
+        return "An error occurred while canceling the assignment.", 500
 
     return redirect(url_for('assigned_events'))
-
 
 @app.route('/notifications')
 def notifications():

@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy import text
@@ -192,67 +193,7 @@ def add_event():
         return redirect(url_for('admin_profile'))
     else:
         return render_template('add_event.html')
-'''WORKSS
-@app.route('/add_event', methods=['GET', 'POST'])
-def add_event():
-    if 'user_id' not in session or session.get('role') != 'admin':
-        return redirect(url_for('splash_screen'))
 
-    if request.method == 'POST':
-        event_name = request.form['event_name']
-        event_description = request.form['event_description']
-        location = request.form['location']
-        required_skills_list = request.form.getlist('required_skills[]')
-        required_skills = ','.join(required_skills_list)
-        urgency = request.form['urgency']
-        event_date_str = request.form['event_date']
-
-        event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
-
-        # Insert event data into Events table
-        event_data = pd.DataFrame({
-            'event_name': [event_name],
-            'event_description': [event_description],
-            'location': [location],
-            'required_skills': [required_skills],
-            'urgency': [urgency],
-            'event_date': [event_date],
-            'created_by': [session['user_id']]
-        })
-
-        try:
-            # Save the event to the Events table
-            event_data.to_sql('Events', engine, if_exists='append', index=False)
-
-            # Create notifications for all users
-            all_users_query = "SELECT id AS user_id FROM Users"
-            all_users_df = pd.read_sql(all_users_query, engine)
-
-            # Prepare notification entries for all users
-            notifications_data = []
-            for user_id in all_users_df['user_id']:
-                notifications_data.append({
-                    'user_id': user_id,
-                    'event_name': event_name,
-                    'event_description': event_description,
-                    'location': location,
-                    'notifications_date': event_date,
-                    'read_status': 0
-                })
-            
-            # Insert notifications into Notifications table
-            if notifications_data:
-                notifications_df = pd.DataFrame(notifications_data)
-                notifications_df.to_sql('Notifications', engine, if_exists='append', index=False)
-
-        except Exception as e:
-            print(e)
-            return "Error: Failed to create event."
-
-        return redirect(url_for('admin_profile'))
-    else:
-        return render_template('add_event.html')
-'''
 
 @app.route('/manage_events')
 def manage_events():
@@ -297,6 +238,38 @@ def show_history():
         return redirect(url_for('splash_screen'))
     
     return render_template('volunteer_history.html')
+
+
+@app.route('/get_volunteer_history')
+def get_volunteer_history():
+    if 'user_id' not in session or session.get('role') != 'volunteer':
+        return redirect(url_for('splash_screen'))
+
+    volunteer_id = session['user_id']
+
+    # Query to get the volunteer history for the logged-in user
+    query = """
+    SELECT e.event_name, vh.participation_status, vh.hours_volunteered, vh.feedback
+    FROM Volunteer_History vh
+    JOIN Events e ON vh.event_id = e.id
+    WHERE vh.volunteer_id = :volunteer_id
+    """
+    with engine.connect() as conn:
+        result = conn.execute(text(query), {'volunteer_id': volunteer_id})
+        
+        # Convert each row to a dictionary using row._mapping to access columns by name
+        volunteer_history = [
+            {
+                'event_name': row._mapping['event_name'],
+                'participation_status': row._mapping['participation_status'],
+                'hours_volunteered': row._mapping['hours_volunteered'],
+                'feedback': row._mapping['feedback']
+            }
+            for row in result
+        ]
+
+    return jsonify(volunteer_history)
+
 
 @app.route('/assigned_events')
 def assigned_events():
@@ -473,7 +446,7 @@ def delete_event(event_id):
 
     return redirect(url_for('manage_events'))
 
-
+'''WORKSSSSS
 @app.route('/match_volunteers/<int:event_id>', methods=['GET', 'POST'])
 def match_volunteers(event_id):
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -553,6 +526,95 @@ def match_volunteers(event_id):
         print("Volunteers passed to template:", volunteers)
         return render_template('match_volunteers.html', event=event, volunteers=volunteers)
 
+'''
+
+@app.route('/match_volunteers/<int:event_id>', methods=['GET', 'POST'])
+def match_volunteers(event_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('splash_screen'))
+
+    # Fetch event data
+    event_query = "SELECT * FROM Events WHERE id = :event_id"
+    event_df = pd.read_sql(event_query, engine, params={'event_id': event_id})
+
+    if event_df.empty:
+        return "Event not found."
+
+    event = event_df.iloc[0]
+    required_skills = set(event['required_skills'].split(',')) if event['required_skills'] else set()
+
+    # Ensure event_date is a date object
+    event_date = event['event_date']
+    if isinstance(event_date, str):
+        event_date = datetime.strptime(event_date, '%Y-%m-%d').date()
+    elif isinstance(event_date, pd.Timestamp):
+        event_date = event_date.date()
+
+    # Get volunteers matching the skills and availability
+    users_query = """
+        SELECT id, email, full_name, skills, availability_start, availability_end
+        FROM Users WHERE role = 'volunteer'
+    """
+    users_df = pd.read_sql(users_query, engine, index_col=None)
+
+    # Initialize an empty list for matching volunteers
+    matching_volunteers = []
+
+    for idx, user in users_df.iterrows():
+        # Convert user skills to a set
+        user_skills = set(user['skills'].split(',')) if pd.notnull(user['skills']) else set()
+
+        # Check if the user's skills match the required skills
+        if not required_skills or user_skills & required_skills:
+            # Convert availability_start and availability_end to date objects, if they exist
+            availability_start = user['availability_start']
+            availability_end = user['availability_end']
+
+            if pd.notnull(availability_start):
+                if isinstance(availability_start, str):
+                    availability_start = datetime.strptime(availability_start, '%Y-%m-%d').date()
+                elif isinstance(availability_start, pd.Timestamp):
+                    availability_start = availability_start.date()
+
+            if pd.notnull(availability_end):
+                if isinstance(availability_end, str):
+                    availability_end = datetime.strptime(availability_end, '%Y-%m-%d').date()
+                elif isinstance(availability_end, pd.Timestamp):
+                    availability_end = availability_end.date()
+
+            # Check if the volunteer is available on the event date
+            if availability_start and availability_end and availability_start <= event_date <= availability_end:
+                user_dict = user.to_dict()
+                user_dict['start_date_str'] = availability_start.strftime('%Y-%m-%d') if availability_start else ''
+                user_dict['end_date_str'] = availability_end.strftime('%Y-%m-%d') if availability_end else ''
+                matching_volunteers.append(user_dict)
+
+    # Process POST request to assign volunteers and populate Volunteer_History
+    if request.method == 'POST':
+        selected_volunteer_ids = [int(vol_id) for vol_id in request.form.getlist('volunteer_ids')]
+
+        # Insert into VolunteerAssignments and Volunteer_History tables
+        assignment_data = pd.DataFrame({'event_id': [event_id] * len(selected_volunteer_ids), 'user_id': selected_volunteer_ids})
+        try:
+            assignment_data.to_sql('VolunteerAssignments', engine, if_exists='append', index=False)
+
+            # Populate Volunteer_History with "No Show" as default
+            history_data = pd.DataFrame({
+                'volunteer_id': selected_volunteer_ids,
+                'event_id': [event_id] * len(selected_volunteer_ids),
+                'participation_status': ['No Show'] * len(selected_volunteer_ids),
+                'hours_volunteered': [0] * len(selected_volunteer_ids),
+                'feedback': [''] * len(selected_volunteer_ids)
+            })
+            history_data.to_sql('Volunteer_History', engine, if_exists='append', index=False)
+
+        except Exception as e:
+            print(e)
+            return f"Error: Failed to assign volunteers. {e}"
+
+        return redirect(url_for('manage_events'))
+    
+    return render_template('match_volunteers.html', event=event, volunteers=matching_volunteers)
 
 
 

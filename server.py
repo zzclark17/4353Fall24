@@ -110,6 +110,24 @@ def volunteer_profile():
 def logout():
     session.clear()
     return redirect(url_for('splash_screen'))
+@app.route('/generate_reports')
+def generate_reports():
+    # Check if user is an admin
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('splash_screen'))
+    return render_template('GenerateReports.html')
+
+@app.route('/generate_pdf_report', methods=['POST'])
+def generate_pdf_report():
+    # Placeholder for generating PDF report
+    # Code to generate the PDF report will go here
+    return "PDF Report generated!"
+
+@app.route('/generate_csv_report', methods=['POST'])
+def generate_csv_report():
+    # Placeholder for generating CSV report
+    # Code to generate the CSV report will go here
+    return "CSV Report generated!"
 
 @app.route('/add_event', methods=['GET', 'POST'])
 def add_event():

@@ -78,6 +78,11 @@
                 <button type="submit">Show Profile Info</button>
             </form>
 
+            <!-- Generate Reports Button -->
+            <form action="{{ url_for('generate_reports') }}">
+                <button type="submit">Generate Reports</button>
+            </form>
+
             <!-- Logout Button -->
             <form action="{{ url_for('logout') }}">
                 <button type="submit">Logout</button>

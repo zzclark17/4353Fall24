@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Reports</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef2f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .report-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .report-container h1 {
+            margin-bottom: 30px;
+            font-size: 26px;
+            color: #333;
+        }
+        .report-container button {
+            padding: 15px;
+            background-color: #5bc0de;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+            margin-top: 15px;
+        }
+        .report-container button:hover {
+            background-color: #31b0d5;
+        }
+        .report-container button:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(91, 192, 222, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <h1>Generate Reports</h1>
+        <p>Select a format to generate the reports:</p>
+        <form action="{{ url_for('generate_pdf_report') }}" method="POST">
+            <button type="submit">Generate PDF Report</button>
+        </form>
+        <form action="{{ url_for('generate_csv_report') }}" method="POST">
+            <button type="submit">Generate CSV Report</button>
+        </form>
+    </div>
+</body>
+</html>

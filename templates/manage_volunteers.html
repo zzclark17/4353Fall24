@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Volunteers</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eef2f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .manage-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 800px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+        .manage-container h1 {
+            text-align: center;
+            font-size: 26px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .save-button {
+            padding: 12px;
+            background-color: #5bc0de;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .save-button:hover {
+            background-color: #31b0d5;
+        }
+    </style>
+</head>
+<body>
+    <div class="manage-container">
+        <h1>Manage Volunteers</h1>
+        <form id="manage-volunteers-form" method="POST" action="{{ url_for('save_volunteer_updates') }}">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Volunteer Name</th>
+                        <th>Event Name</th>
+                        <th>Status</th>
+                        <th>Hours Volunteered</th>
+                        <th>Feedback</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in assignments %}
+                    <tr>
+                        <td>{{ assignment.volunteer_name }}</td>
+                        <td>{{ assignment.event_name }}</td>
+                        <td>
+                            <select name="status_{{ assignment.assignment_id }}">
+                                <option value="Completed">Completed</option>
+                                <option value="Cancelled">Cancelled</option>
+                                <option value="No Show">No Show</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" name="hours_{{ assignment.assignment_id }}" min="0" value="{{ assignment.hours_volunteered }}">
+                        </td>
+                        <td>
+                            <input type="text" name="feedback_{{ assignment.assignment_id }}" value="{{ assignment.feedback }}">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="actions">
+                <button type="submit" class="save-button">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

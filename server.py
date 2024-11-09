@@ -415,22 +415,63 @@ def save_individual_update(assignment_id):
     feedback = request.form.get('feedback', '')
 
     try:
-        # Update Volunteer_History and VolunteerAssignments
+        # Start transaction to ensure data consistency
         with engine.connect() as conn:
-            # Insert or update in Volunteer_History
-            conn.execute(text("""
-                INSERT INTO Volunteer_History (volunteer_id, event_id, participation_status, hours_volunteered, feedback)
-                SELECT user_id, event_id, :status, :hours, :feedback
+            trans = conn.begin()  # Start transaction
+
+            # Retrieve volunteer_id and event_id from VolunteerAssignments
+            result = conn.execute(text("""
+                SELECT user_id AS volunteer_id, event_id
                 FROM VolunteerAssignments
                 WHERE id = :assignment_id
-                ON CONFLICT (volunteer_id, event_id) 
-                DO UPDATE SET 
-                    participation_status = excluded.participation_status,
-                    hours_volunteered = excluded.hours_volunteered,
-                    feedback = excluded.feedback
-            """), {'status': status, 'hours': hours, 'feedback': feedback, 'assignment_id': assignment_id})
+            """), {'assignment_id': assignment_id}).mappings().fetchone()
 
-        print(f"Successfully updated assignment ID {assignment_id}.")
+            if result:
+                volunteer_id = result['volunteer_id']
+                event_id = result['event_id']
+
+                # Check if a history entry exists for this volunteer and event
+                history_check_query = """
+                    SELECT 1 FROM Volunteer_History
+                    WHERE volunteer_id = :volunteer_id AND event_id = :event_id
+                """
+                history_check_result = conn.execute(text(history_check_query), {
+                    'volunteer_id': volunteer_id,
+                    'event_id': event_id
+                }).fetchone()
+
+                if history_check_result:
+                    # Update the existing entry in Volunteer_History
+                    conn.execute(text("""
+                        UPDATE Volunteer_History
+                        SET participation_status = :status,
+                            hours_volunteered = :hours,
+                            feedback = :feedback
+                        WHERE volunteer_id = :volunteer_id AND event_id = :event_id
+                    """), {
+                        'status': status,
+                        'hours': hours,
+                        'feedback': feedback,
+                        'volunteer_id': volunteer_id,
+                        'event_id': event_id
+                    })
+                    print(f"Updated Volunteer_History entry for volunteer ID {volunteer_id} and event ID {event_id}.")
+                else:
+                    # Insert a new entry into Volunteer_History
+                    conn.execute(text("""
+                        INSERT INTO Volunteer_History (volunteer_id, event_id, participation_status, hours_volunteered, feedback)
+                        VALUES (:volunteer_id, :event_id, :status, :hours, :feedback)
+                    """), {
+                        'volunteer_id': volunteer_id,
+                        'event_id': event_id,
+                        'status': status,
+                        'hours': hours,
+                        'feedback': feedback
+                    })
+                    print(f"Inserted new Volunteer_History entry for volunteer ID {volunteer_id} and event ID {event_id}.")
+
+            trans.commit()  # Commit the transaction
+
         return redirect(url_for('manage_volunteers'))
 
     except Exception as e:

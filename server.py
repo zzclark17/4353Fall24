@@ -377,14 +377,16 @@ def manage_volunteers():
     if 'user_id' not in session or session.get('role') != 'admin':
         return redirect(url_for('splash_screen'))
 
-    # Query to get volunteer assignments along with related event and user details
+    # Query to get volunteer assignments along with related event and user details, including user_id and event_id
     query = """
         SELECT VolunteerAssignments.id AS assignment_id,
                VolunteerAssignments.user_id,
                VolunteerAssignments.event_id,
                VolunteerAssignments.role,
                Users.full_name,
+               Users.id AS user_id,
                Events.event_name,
+               Events.id AS event_id,
                Events.event_date,
                VolunteerAssignments.cancelled
         FROM VolunteerAssignments
@@ -402,37 +404,39 @@ def manage_volunteers():
 
 
 
-@app.route('/save_volunteer_updates', methods=['POST'])
-def save_volunteer_updates():
+@app.route('/save_individual_update/<int:assignment_id>', methods=['POST'])
+def save_individual_update(assignment_id):
     if 'user_id' not in session or session.get('role') != 'admin':
         return redirect(url_for('splash_screen'))
 
-    assignments = request.form.to_dict()
-    for key, value in assignments.items():
-        if key.startswith("status_"):
-            assignment_id = int(key.split("_")[1])
-            status = value
-            hours_key = f"hours_{assignment_id}"
-            feedback_key = f"feedback_{assignment_id}"
-            hours = int(assignments.get(hours_key, 0))
-            feedback = assignments.get(feedback_key, "")
+    # Get individual form values
+    status = request.form.get('status')
+    hours = int(request.form.get('hours', 0))  # Default to 0 if empty
+    feedback = request.form.get('feedback', '')
 
-            # Update Volunteer_History and VolunteerAssignments
-            with engine.connect() as conn:
-                # Insert or update in Volunteer_History
-                conn.execute(text("""
-                    INSERT INTO Volunteer_History (volunteer_id, event_id, participation_status, hours_volunteered, feedback)
-                    SELECT user_id, event_id, :status, :hours, :feedback
-                    FROM VolunteerAssignments
-                    WHERE id = :assignment_id
-                    ON CONFLICT (volunteer_id, event_id) 
-                    DO UPDATE SET 
-                        participation_status = excluded.participation_status,
-                        hours_volunteered = excluded.hours_volunteered,
-                        feedback = excluded.feedback
-                """), {'status': status, 'hours': hours, 'feedback': feedback, 'assignment_id': assignment_id})
+    try:
+        # Update Volunteer_History and VolunteerAssignments
+        with engine.connect() as conn:
+            # Insert or update in Volunteer_History
+            conn.execute(text("""
+                INSERT INTO Volunteer_History (volunteer_id, event_id, participation_status, hours_volunteered, feedback)
+                SELECT user_id, event_id, :status, :hours, :feedback
+                FROM VolunteerAssignments
+                WHERE id = :assignment_id
+                ON CONFLICT (volunteer_id, event_id) 
+                DO UPDATE SET 
+                    participation_status = excluded.participation_status,
+                    hours_volunteered = excluded.hours_volunteered,
+                    feedback = excluded.feedback
+            """), {'status': status, 'hours': hours, 'feedback': feedback, 'assignment_id': assignment_id})
 
-    return redirect(url_for('manage_volunteers'))
+        print(f"Successfully updated assignment ID {assignment_id}.")
+        return redirect(url_for('manage_volunteers'))
+
+    except Exception as e:
+        print(f"Error saving individual update: {e}")
+        return "An error occurred while saving the update.", 500
+
 
 @app.route('/notifications')
 def notifications():

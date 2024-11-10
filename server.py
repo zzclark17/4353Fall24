@@ -11,6 +11,11 @@ from datetime import date
 
 app = Flask(__name__)
 
+#run the command for pdf generation: pip install reportlab
+from flask import send_file
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 @app.route('/')
 def home():
@@ -852,6 +857,84 @@ def update_profile():
         conn.execute(text(update_query), params)
 
     return redirect(url_for('show_profile_info'))
+
+#report generation: PDF
+@app.route('/generate_volunteer_report')
+def generate_volunteer_report():
+    # Fetch volunteer data from the database
+    query = """
+        SELECT Users.full_name, Volunteer_History.event_id, Volunteer_History.participation_status, 
+               Volunteer_History.feedback, Volunteer_History.hours_volunteered, Events.event_name
+        FROM Volunteer_History
+        JOIN Users ON Volunteer_History.volunteer_id = Users.id
+        JOIN Events ON Volunteer_History.event_id = Events.id
+        ORDER BY Users.full_name, Events.event_name
+    """
+    with engine.connect() as conn:
+        result = conn.execute(text(query)).mappings()
+        data = [dict(row) for row in result]
+
+    # Initialize PDF document
+    pdf_buffer = BytesIO()
+    pdf_canvas = canvas.Canvas(pdf_buffer, pagesize=letter)
+    pdf_canvas.setTitle("Volunteer Participation Report")
+
+    # Title
+    pdf_canvas.setFont("Helvetica-Bold", 16)
+    pdf_canvas.drawString(220, 750, "Volunteer Participation Report")
+
+    # Set starting positions
+    y_position = 700
+    pdf_canvas.setFont("Helvetica", 10)
+
+    # Keep track of the current volunteer
+    current_volunteer = None
+    total_hours = 0
+
+    for row in data:
+        # Check if we are still on the same volunteer or a new one
+        if current_volunteer != row['full_name']:
+            # Print total hours for the previous volunteer if not the first entry
+            if current_volunteer is not None:
+                pdf_canvas.drawString(80, y_position, f"Total Hours Volunteered: {total_hours}")
+                y_position -= 20
+            
+            # Reset for the new volunteer
+            current_volunteer = row['full_name']
+            total_hours = 0
+            y_position -= 40
+            pdf_canvas.setFont("Helvetica-Bold", 12)
+            pdf_canvas.drawString(80, y_position, f"Volunteer: {row['full_name']}")
+            y_position -= 20
+            pdf_canvas.setFont("Helvetica", 10)
+            pdf_canvas.drawString(80, y_position, "Event Name                 Status            Hours            Feedback")
+            y_position -= 20
+
+        # Add details of each event
+        event_name = row['event_name']
+        status = row['participation_status']
+        hours = row['hours_volunteered']
+        feedback = row['feedback'] if row['feedback'] else "N/A"
+        total_hours += hours
+
+        pdf_canvas.drawString(80, y_position, f"{event_name:<25} {status:<15} {hours:<10} {feedback}")
+        y_position -= 20
+
+        # Add page break if space is running out
+        if y_position < 50:
+            pdf_canvas.showPage()
+            y_position = 750
+
+    # Print the last volunteer's total hours
+    pdf_canvas.drawString(80, y_position, f"Total Hours Volunteered: {total_hours}")
+
+    pdf_canvas.save()
+
+    # Move PDF buffer to start
+    pdf_buffer.seek(0)
+
+    return send_file(pdf_buffer, as_attachment=True, download_name="Volunteer_Participation_Report.pdf", mimetype='application/pdf')
+
 
 if __name__ == '__main__':
     app.run(debug=True)

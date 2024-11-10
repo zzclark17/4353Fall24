@@ -53,9 +53,10 @@
     <div class="report-container">
         <h1>Generate Reports</h1>
         <p>Select a format to generate the reports:</p>
-        <form action="{{ url_for('generate_pdf_report') }}" method="POST">
+        <form action="{{ url_for('generate_volunteer_report') }}" method="GET">
             <button type="submit">Generate PDF Report</button>
         </form>
+        
         <form action="{{ url_for('generate_csv_report') }}" method="POST">
             <button type="submit">Generate CSV Report</button>
         </form>

@@ -861,13 +861,13 @@ def update_profile():
 #report generation: PDF
 @app.route('/generate_volunteer_report')
 def generate_volunteer_report():
-    # Fetch volunteer data from the database
+    # Adjusted query to use LEFT JOIN so we get all users, even those without participation history
     query = """
         SELECT Users.full_name, Volunteer_History.event_id, Volunteer_History.participation_status, 
                Volunteer_History.feedback, Volunteer_History.hours_volunteered, Events.event_name
-        FROM Volunteer_History
-        JOIN Users ON Volunteer_History.volunteer_id = Users.id
-        JOIN Events ON Volunteer_History.event_id = Events.id
+        FROM Users
+        LEFT JOIN Volunteer_History ON Volunteer_History.volunteer_id = Users.id
+        LEFT JOIN Events ON Volunteer_History.event_id = Events.id
         ORDER BY Users.full_name, Events.event_name
     """
     with engine.connect() as conn:
@@ -898,7 +898,7 @@ def generate_volunteer_report():
             if current_volunteer is not None:
                 pdf_canvas.drawString(80, y_position, f"Total Hours Volunteered: {total_hours}")
                 y_position -= 20
-            
+
             # Reset for the new volunteer
             current_volunteer = row['full_name']
             total_hours = 0
@@ -910,12 +910,15 @@ def generate_volunteer_report():
             pdf_canvas.drawString(80, y_position, "Event Name                 Status            Hours            Feedback")
             y_position -= 20
 
-        # Add details of each event
-        event_name = row['event_name']
-        status = row['participation_status']
-        hours = row['hours_volunteered']
+        # Add details of each event if they have participation history, otherwise indicate no history
+        event_name = row['event_name'] if row['event_name'] else "No Events"
+        status = row['participation_status'] if row['participation_status'] else "N/A"
+        hours = row['hours_volunteered'] if row['hours_volunteered'] is not None else 0
         feedback = row['feedback'] if row['feedback'] else "N/A"
-        total_hours += hours
+        
+        # Only add to total hours if they have actual history
+        if row['hours_volunteered'] is not None:
+            total_hours += hours
 
         pdf_canvas.drawString(80, y_position, f"{event_name:<25} {status:<15} {hours:<10} {feedback}")
         y_position -= 20
@@ -926,7 +929,8 @@ def generate_volunteer_report():
             y_position = 750
 
     # Print the last volunteer's total hours
-    pdf_canvas.drawString(80, y_position, f"Total Hours Volunteered: {total_hours}")
+    if current_volunteer is not None:
+        pdf_canvas.drawString(80, y_position, f"Total Hours Volunteered: {total_hours}")
 
     pdf_canvas.save()
 
@@ -934,6 +938,90 @@ def generate_volunteer_report():
     pdf_buffer.seek(0)
 
     return send_file(pdf_buffer, as_attachment=True, download_name="Volunteer_Participation_Report.pdf", mimetype='application/pdf')
+
+# Report Generation: Event Assignments PDF
+@app.route('/generate_event_assignments_report')
+def generate_event_assignments_report():
+    # Query to fetch event details along with volunteer assignments
+    query = """
+        SELECT Events.id AS event_id, Events.event_name, Events.event_description, Events.location, 
+               Events.required_skills, Events.urgency, Events.event_date, 
+               Users.full_name AS volunteer_name, VolunteerAssignments.status AS assignment_status,
+               VolunteerAssignments.cancelled AS assignment_cancelled
+        FROM Events
+        LEFT JOIN VolunteerAssignments ON Events.id = VolunteerAssignments.event_id
+        LEFT JOIN Users ON VolunteerAssignments.user_id = Users.id
+        ORDER BY Events.event_date, Events.event_name, Users.full_name
+    """
+    with engine.connect() as conn:
+        result = conn.execute(text(query)).mappings()
+        data = [dict(row) for row in result]
+
+    # Initialize PDF document
+    pdf_buffer = BytesIO()
+    pdf_canvas = canvas.Canvas(pdf_buffer, pagesize=letter)
+    pdf_canvas.setTitle("Event Details and Volunteer Assignments Report")
+
+    # Title
+    pdf_canvas.setFont("Helvetica-Bold", 16)
+    pdf_canvas.drawString(180, 750, "Event Details and Volunteer Assignments")
+
+    # Set starting positions
+    y_position = 700
+    pdf_canvas.setFont("Helvetica", 10)
+
+    # Track the current event
+    current_event_id = None
+
+    for row in data:
+        # Check if we are still on the same event or a new one
+        if current_event_id != row['event_id']:
+            # Add space between events
+            if current_event_id is not None:
+                y_position -= 20
+
+            # Print event details
+            current_event_id = row['event_id']
+            pdf_canvas.setFont("Helvetica-Bold", 12)
+            pdf_canvas.drawString(80, y_position, f"Event: {row['event_name']}")
+            y_position -= 20
+
+            pdf_canvas.setFont("Helvetica", 10)
+            pdf_canvas.drawString(80, y_position, f"Description: {row['event_description']}")
+            y_position -= 20
+            pdf_canvas.drawString(80, y_position, f"Location: {row['location']}")
+            y_position -= 20
+            pdf_canvas.drawString(80, y_position, f"Required Skills: {row['required_skills']}")
+            y_position -= 20
+            pdf_canvas.drawString(80, y_position, f"Urgency: {row['urgency']}")
+            y_position -= 20
+            pdf_canvas.drawString(80, y_position, f"Date: {row['event_date']}")
+            y_position -= 20
+            pdf_canvas.drawString(80, y_position, "Assigned Volunteers:")
+            y_position -= 20
+
+        # Only display volunteers with active, non-cancelled assignments
+        if row['assignment_status'] == 'active' and row['assignment_cancelled'] == 0:
+            volunteer_name = row['volunteer_name'] if row['volunteer_name'] else "No volunteers assigned"
+            pdf_canvas.drawString(100, y_position, f"- {volunteer_name}")
+            y_position -= 20
+
+        # If no volunteers were found for the current event, indicate that
+        elif row['volunteer_name'] is None:
+            pdf_canvas.drawString(100, y_position, "- No volunteers assigned")
+            y_position -= 20
+
+        # Add page break if space is running out
+        if y_position < 50:
+            pdf_canvas.showPage()
+            y_position = 750
+
+    pdf_canvas.save()
+
+    # Move PDF buffer to start
+    pdf_buffer.seek(0)
+
+    return send_file(pdf_buffer, as_attachment=True, download_name="Event_Assignments_Report.pdf", mimetype='application/pdf')
 
 
 if __name__ == '__main__':

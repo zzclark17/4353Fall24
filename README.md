@@ -111,4 +111,9 @@ In order to run the Unit Tests Open test/test_flask_app.py and use the following
 
 	python -m pytest --cov=server tests/
 
+In order to check for missing tests use:
+
+    python -m pytest --cov=server --cov-report=term-missing tests/ 
+
+
 	*If you encounter test errors after running the command above more than once, it is because data was deleted from the database and the unit test failed to find the data because not it is missing. Ensure to revert the database back to its original state by discarding any changes that were made. 

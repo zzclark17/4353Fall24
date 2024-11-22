@@ -61,8 +61,11 @@
             <button type="submit">Generate Event Assignments Report PDF</button>
         </form>
         
-        <form action="{{ url_for('generate_csv_report') }}" method="POST">
-            <button type="submit">Generate CSV Report</button>
+        <form action="{{ url_for('generate_csv_volunteer_report') }}" method="GET">
+            <button type="submit">Generate Volunteer Report CSV</button>
+        </form>
+        <form action="{{ url_for('generate_csv_assignments_report') }}" method="GET">
+            <button type="submit">Generate Assignments Report CSV</button>
         </form>
     </div>
 </body>

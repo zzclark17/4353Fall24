@@ -8,6 +8,9 @@ from sqlalchemy import insert
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from datetime import date
+from collections import defaultdict
+from io import StringIO, BytesIO
+import csv
 
 app = Flask(__name__)
 
@@ -131,11 +134,6 @@ def generate_pdf_report():
     # Code to generate the PDF report will go here
     return "PDF Report generated!"
 
-@app.route('/generate_csv_report', methods=['POST'])
-def generate_csv_report():
-    # Placeholder for generating CSV report
-    # Code to generate the CSV report will go here
-    return "CSV Report generated!"
 
 @app.route('/add_event', methods=['GET', 'POST'])
 def add_event():
@@ -210,10 +208,15 @@ def manage_events():
     events_query = "SELECT * FROM Events"
     events_df = pd.read_sql(events_query, engine)
 
+    # Add a column to check if the event date has passed
+    current_date = datetime.now()
+    events_df['is_past'] = events_df['event_date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d') < current_date)
+
     # Convert DataFrame to a list of dictionaries
     events = events_df.to_dict(orient='records')
 
     return render_template('manage_events.html', events=events)
+
 
 @app.route('/show_profile_info')
 def show_profile_info():
@@ -938,6 +941,64 @@ def generate_volunteer_report():
     pdf_buffer.seek(0)
 
     return send_file(pdf_buffer, as_attachment=True, download_name="Volunteer_Participation_Report.pdf", mimetype='application/pdf')
+
+@app.route('/generate_csv_volunteer_report', methods=['GET'])
+def generate_csv_volunteer_report():
+    query = """
+        SELECT Users.full_name, Volunteer_History.event_id, Volunteer_History.participation_status, 
+               Volunteer_History.feedback, Volunteer_History.hours_volunteered, Events.event_name
+        FROM Users
+        LEFT JOIN Volunteer_History ON Volunteer_History.volunteer_id = Users.id
+        LEFT JOIN Events ON Volunteer_History.event_id = Events.id
+        ORDER BY Users.full_name, Events.event_name
+    """
+    with engine.connect() as conn:
+        result = conn.execute(text(query)).mappings()
+        data = [dict(row) for row in result]
+
+    # Group data by volunteer
+    volunteer_data = defaultdict(list)
+    for row in data:
+        volunteer_data[row['full_name']].append(row)
+
+    # Prepare CSV content
+    csv_buffer = StringIO()
+    csv_writer = csv.writer(csv_buffer)
+
+    # Write CSV header
+    csv_writer.writerow(['Volunteer', 'Event Name', 'Status', 'Hours', 'Feedback'])
+
+    # Write data for each volunteer
+    for volunteer, events in volunteer_data.items():
+        total_hours = 0
+        for row in events:
+            event_name = row['event_name'] or "No Events"
+            status = row['participation_status'] or "N/A"
+            hours = row['hours_volunteered'] or 0
+            feedback = row['feedback'] or "N/A"
+
+            # Accumulate total hours
+            if row['hours_volunteered']:
+                total_hours += hours
+
+            csv_writer.writerow([volunteer, event_name, status, hours, feedback])
+
+        # Write total hours for the volunteer
+        csv_writer.writerow([volunteer, "Total Hours Volunteered", "", total_hours, ""])
+
+    # Reset buffer position
+    csv_buffer.seek(0)
+
+    # Send CSV file as a response
+    return send_file(
+        BytesIO(csv_buffer.getvalue().encode('utf-8')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='Volunteer_Participation_Report.csv'
+    )
+
+
+
 
 # Report Generation: Event Assignments PDF
 @app.route('/generate_event_assignments_report')

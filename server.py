@@ -1001,6 +1001,12 @@ def generate_csv_volunteer_report():
     )
 
 # Report Generation: Event Assignments PDF
+from flask import send_file
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+
 @app.route('/generate_event_assignments_report')
 def generate_event_assignments_report():
     # Query to fetch event details along with volunteer assignments
@@ -1018,71 +1024,103 @@ def generate_event_assignments_report():
         result = conn.execute(text(query)).mappings()
         data = [dict(row) for row in result]
 
+    # Process data to group volunteers under each event
+    events = {}
+    for row in data:
+        event_id = row['event_id']
+        if event_id not in events:
+            # Initialize event details
+            events[event_id] = {
+                'event_name': row['event_name'],
+                'event_description': row['event_description'],
+                'location': row['location'],
+                'required_skills': row['required_skills'],
+                'urgency': row['urgency'],
+                'event_date': row['event_date'],
+                'volunteers': []
+            }
+        # Append volunteer if assignment is active and not cancelled
+        if row['assignment_status'] == 'active' and row['assignment_cancelled'] == 0:
+            if row['volunteer_name']:
+                events[event_id]['volunteers'].append(row['volunteer_name'])
+
     # Initialize PDF document
     pdf_buffer = BytesIO()
-    pdf_canvas = canvas.Canvas(pdf_buffer, pagesize=letter)
-    pdf_canvas.setTitle("Event Details and Volunteer Assignments Report")
+    doc = SimpleDocTemplate(
+        pdf_buffer, pagesize=letter,
+        title="Event Details and Volunteer Assignments Report"
+    )
 
-    # Title
-    pdf_canvas.setFont("Helvetica-Bold", 16)
-    pdf_canvas.drawString(180, 750, "Event Details and Volunteer Assignments")
+    # Define styles
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(
+        name='EventTitle', fontSize=14, leading=16, spaceAfter=10,
+        spaceBefore=20, fontName='Helvetica-Bold'
+    ))
+    styles.add(ParagraphStyle(
+        name='EventDetail', fontSize=12, leading=14, spaceAfter=5
+    ))
+    styles.add(ParagraphStyle(
+        name='Volunteer', fontSize=11, leading=13, leftIndent=20
+    ))
+    styles.add(ParagraphStyle(
+        name='Separator', spaceBefore=10, spaceAfter=10
+    ))
 
-    # Set starting positions
-    y_position = 700
-    pdf_canvas.setFont("Helvetica", 10)
+    # Create flowables list
+    flowables = []
 
-    # Track the current event
-    current_event_id = None
+    # Add the main title
+    title = Paragraph("Event Details and Volunteer Assignments", styles['Title'])
+    flowables.append(title)
+    flowables.append(Spacer(1, 12))
 
-    for row in data:
-        # Check if we are still on the same event or a new one
-        if current_event_id != row['event_id']:
-            # Add space between events
-            if current_event_id is not None:
-                y_position -= 20
+    # Iterate over events
+    for event in events.values():
+        # Event title
+        event_title = Paragraph(f"Event: {event['event_name']}", styles['EventTitle'])
+        flowables.append(event_title)
 
-            # Print event details
-            current_event_id = row['event_id']
-            pdf_canvas.setFont("Helvetica-Bold", 12)
-            pdf_canvas.drawString(80, y_position, f"Event: {row['event_name']}")
-            y_position -= 20
+        # Event details
+        details = [
+            f"Description: {event['event_description']}",
+            f"Location: {event['location']}",
+            f"Required Skills: {event['required_skills']}",
+            f"Urgency: {event['urgency']}",
+            f"Date: {event['event_date']}"
+        ]
+        for detail in details:
+            p = Paragraph(detail, styles['EventDetail'])
+            flowables.append(p)
 
-            pdf_canvas.setFont("Helvetica", 10)
-            pdf_canvas.drawString(80, y_position, f"Description: {row['event_description']}")
-            y_position -= 20
-            pdf_canvas.drawString(80, y_position, f"Location: {row['location']}")
-            y_position -= 20
-            pdf_canvas.drawString(80, y_position, f"Required Skills: {row['required_skills']}")
-            y_position -= 20
-            pdf_canvas.drawString(80, y_position, f"Urgency: {row['urgency']}")
-            y_position -= 20
-            pdf_canvas.drawString(80, y_position, f"Date: {row['event_date']}")
-            y_position -= 20
-            pdf_canvas.drawString(80, y_position, "Assigned Volunteers:")
-            y_position -= 20
+        # Assigned volunteers
+        flowables.append(Paragraph("Assigned Volunteers:", styles['EventDetail']))
+        if event['volunteers']:
+            for volunteer in event['volunteers']:
+                p = Paragraph(f"• {volunteer}", styles['Volunteer'])
+                flowables.append(p)
+        else:
+            p = Paragraph("• No volunteers assigned", styles['Volunteer'])
+            flowables.append(p)
 
-        # Only display volunteers with active, non-cancelled assignments
-        if row['assignment_status'] == 'active' and row['assignment_cancelled'] == 0:
-            volunteer_name = row['volunteer_name'] if row['volunteer_name'] else "No volunteers assigned"
-            pdf_canvas.drawString(100, y_position, f"- {volunteer_name}")
-            y_position -= 20
+        # Add a separator between events
+        flowables.append(Spacer(1, 12))
+        flowables.append(Paragraph('<hr width="100%" color="grey"/>', styles['Separator']))
+        flowables.append(Spacer(1, 12))
 
-        # If no volunteers were found for the current event, indicate that
-        elif row['volunteer_name'] is None:
-            pdf_canvas.drawString(100, y_position, "- No volunteers assigned")
-            y_position -= 20
-
-        # Add page break if space is running out
-        if y_position < 50:
-            pdf_canvas.showPage()
-            y_position = 750
-
-    pdf_canvas.save()
+    # Build the PDF document
+    doc.build(flowables)
 
     # Move PDF buffer to start
     pdf_buffer.seek(0)
 
-    return send_file(pdf_buffer, as_attachment=True, download_name="Event_Assignments_Report.pdf", mimetype='application/pdf')
+    # Return the PDF as a response
+    return send_file(
+        pdf_buffer, as_attachment=True,
+        download_name="Event_Assignments_Report.pdf",
+        mimetype='application/pdf'
+    )
+
 @app.route('/generate_csv_assignments_report', methods=['GET'])
 def generate_csv_assignments_report():
     query = """

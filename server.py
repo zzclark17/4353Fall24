@@ -997,9 +997,6 @@ def generate_csv_volunteer_report():
         download_name='Volunteer_Participation_Report.csv'
     )
 
-
-
-
 # Report Generation: Event Assignments PDF
 @app.route('/generate_event_assignments_report')
 def generate_event_assignments_report():
@@ -1083,6 +1080,72 @@ def generate_event_assignments_report():
     pdf_buffer.seek(0)
 
     return send_file(pdf_buffer, as_attachment=True, download_name="Event_Assignments_Report.pdf", mimetype='application/pdf')
+@app.route('/generate_csv_assignments_report', methods=['GET'])
+def generate_csv_assignments_report():
+    query = """
+        SELECT Events.id AS event_id, Events.event_name, Events.event_description, Events.location, 
+               Events.required_skills, Events.urgency, Events.event_date, 
+               Users.full_name AS volunteer_name, VolunteerAssignments.status AS assignment_status,
+               VolunteerAssignments.cancelled AS assignment_cancelled
+        FROM Events
+        LEFT JOIN VolunteerAssignments ON Events.id = VolunteerAssignments.event_id
+        LEFT JOIN Users ON VolunteerAssignments.user_id = Users.id
+        ORDER BY Events.event_date, Events.event_name, Users.full_name
+    """
+    with engine.connect() as conn:
+        result = conn.execute(text(query)).mappings()
+        data = [dict(row) for row in result]
+    
+    # Prepare CSV content
+    csv_buffer = StringIO()
+    csv_writer = csv.writer(csv_buffer)
+    
+    # Write CSV header
+    csv_writer.writerow(['Event Name', 'Description', 'Location', 'Required Skills', 'Urgency', 'Event Date', 'Volunteer Name'])
+    
+    # Group data by event
+    from collections import defaultdict
+    events = defaultdict(list)
+    for row in data:
+        events[row['event_id']].append(row)
+    
+    # Write data for each event
+    for event_id, event_rows in events.items():
+        # Get event details from the first row
+        first_row = event_rows[0]
+        event_details = [
+            first_row['event_name'],
+            first_row['event_description'],
+            first_row['location'],
+            first_row['required_skills'],
+            first_row['urgency'],
+            first_row['event_date'],
+        ]
+        # Get volunteers assigned to this event
+        volunteers = []
+        for row in event_rows:
+            if row['assignment_status'] == 'active' and row['assignment_cancelled'] == 0:
+                volunteer_name = row['volunteer_name'] if row['volunteer_name'] else "No volunteers assigned"
+                volunteers.append(volunteer_name)
+    
+        # If no active, non-cancelled volunteers assigned
+        if not volunteers:
+            volunteers = ["No volunteers assigned"]
+    
+        # Write a row for each volunteer
+        for volunteer in volunteers:
+            csv_writer.writerow(event_details + [volunteer])
+    
+    # Reset buffer position
+    csv_buffer.seek(0)
+    
+    # Send CSV file as a response
+    return send_file(
+        BytesIO(csv_buffer.getvalue().encode('utf-8')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='Event_Assignments_Report.csv'
+    )
 
 
 if __name__ == '__main__':

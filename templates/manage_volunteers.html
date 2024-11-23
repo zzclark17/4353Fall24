@@ -17,6 +17,21 @@
         .save-button:hover {
             background-color: #45a049;
         }
+        .back-button {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-button a {
+            padding: 12px;
+            background-color: #5bc0de;
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .back-button a:hover {
+            background-color: #337ab7;
+        }
     </style>
 </head>
 <body>
@@ -67,10 +82,8 @@
         </table>
         
         <!-- Back to Admin Profile Button -->
-        <div class="back-button" style="text-align: center; margin-top: 20px;">
-            <a href="{{ url_for('admin_profile') }}" style="padding: 12px; background-color: #5bc0de; color: white; border-radius: 5px; text-decoration: none; font-size: 16px;">
-                Back to Admin Profile
-            </a>
+        <div class="back-button">
+            <a href="{{ url_for('admin_profile') }}">Back to Admin Profile</a>
         </div>
     </div>
 </body>

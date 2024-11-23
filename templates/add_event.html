@@ -58,6 +58,22 @@
         .event-form-container input[type="submit"]:hover {
             background-color: #31b0d5;
         }
+        .back-button {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .back-button a {
+            display: inline-block;
+            padding: 12px;
+            background-color: #5bc0de;
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .back-button a:hover {
+            background-color: #31b0d5;
+        }
     </style>
 </head>
 <body>
@@ -105,6 +121,11 @@
             <!-- Submit Button -->
             <input type="submit" value="Create Event">
         </form>
+
+        <!-- Back to Admin Profile Button -->
+        <div class="back-button">
+            <a href="{{ url_for('admin_profile') }}">Back to Admin Profile</a>
+        </div>
     </div>
 </body>
 </html>

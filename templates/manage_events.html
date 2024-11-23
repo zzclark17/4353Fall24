@@ -85,9 +85,29 @@
         .add-event-button a:hover {
             background-color: #4cae4c;
         }
+
+        .back-to-menu {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .back-to-menu a {
+            padding: 10px 20px;
+            background-color: #0275d8; /* Bootstrap's primary color */
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .back-to-menu a:hover {
+            background-color: #025aa5;
+        }
     </style>
 </head>
 <body>
+    <div class="back-to-menu">
+        <a href="{{ url_for('admin_profile') }}">Back to Main Menu</a>
+    </div>
     <h1>Manage Events</h1>
     <div class="add-event-button">
         <a href="{{ url_for('add_event') }}">Add New Event</a>

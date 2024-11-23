@@ -47,6 +47,22 @@
             outline: none;
             box-shadow: 0 0 5px rgba(91, 192, 222, 0.6);
         }
+        .back-button {
+            margin-top: 20px;
+        }
+        .back-button a {
+            display: inline-block;
+            padding: 12px 20px;
+            background-color: #5bc0de;
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .back-button a:hover {
+            background-color: #31b0d5;
+        }
     </style>
 </head>
 <body>
@@ -67,6 +83,11 @@
         <form action="{{ url_for('generate_csv_assignments_report') }}" method="GET">
             <button type="submit">Generate Event Assignments Report CSV</button>
         </form>
+
+        <!-- Back to Admin Profile Button -->
+        <div class="back-button">
+            <a href="{{ url_for('admin_profile') }}">Back to Admin Profile</a>
+        </div>
     </div>
 </body>
 </html>

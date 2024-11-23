@@ -17,7 +17,10 @@ app = Flask(__name__)
 #run the command for pdf generation: pip install reportlab
 from flask import send_file
 from io import BytesIO
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.pdfgen import canvas
 
 @app.route('/')
@@ -877,70 +880,119 @@ def generate_volunteer_report():
         result = conn.execute(text(query)).mappings()
         data = [dict(row) for row in result]
 
+    # Process data to group participation history under each volunteer
+    volunteers = {}
+    for row in data:
+        full_name = row['full_name']
+        if full_name not in volunteers:
+            volunteers[full_name] = {
+                'participations': [],
+                'total_hours': 0
+            }
+        # Add participation details
+        participation = {
+            'event_name': row['event_name'] if row['event_name'] else "No Events",
+            'participation_status': row['participation_status'] if row['participation_status'] else "N/A",
+            'hours_volunteered': row['hours_volunteered'] if row['hours_volunteered'] is not None else 0,
+            'feedback': row['feedback'] if row['feedback'] else "N/A"
+        }
+        volunteers[full_name]['participations'].append(participation)
+        # Add to total hours if applicable
+        if row['hours_volunteered'] is not None:
+            volunteers[full_name]['total_hours'] += participation['hours_volunteered']
+
     # Initialize PDF document
     pdf_buffer = BytesIO()
-    pdf_canvas = canvas.Canvas(pdf_buffer, pagesize=letter)
-    pdf_canvas.setTitle("Volunteer Participation Report")
+    doc = SimpleDocTemplate(
+        pdf_buffer, pagesize=letter,
+        title="Volunteer Participation Report"
+    )
 
-    # Title
-    pdf_canvas.setFont("Helvetica-Bold", 16)
-    pdf_canvas.drawString(220, 750, "Volunteer Participation Report")
+    # Define styles
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(
+        name='VolunteerName', fontSize=14, leading=16, spaceAfter=10,
+        spaceBefore=20, fontName='Helvetica-Bold'
+    ))
+    styles.add(ParagraphStyle(
+        name='TableHeader', fontSize=12, leading=14, spaceAfter=5, fontName='Helvetica-Bold',
+        alignment=1  # Center alignment
+    ))
+    styles.add(ParagraphStyle(
+        name='TableCell', fontSize=11, leading=13, spaceAfter=3
+    ))
+    styles.add(ParagraphStyle(
+        name='TotalHours', fontSize=12, leading=14, spaceBefore=10, fontName='Helvetica-Bold'
+    ))
 
-    # Set starting positions
-    y_position = 700
-    pdf_canvas.setFont("Helvetica", 10)
+    # Create flowables list
+    flowables = []
 
-    # Keep track of the current volunteer
-    current_volunteer = None
-    total_hours = 0
+    # Add the main title
+    title = Paragraph("Volunteer Participation Report", styles['Title'])
+    flowables.append(title)
+    flowables.append(Spacer(1, 12))
 
-    for row in data:
-        # Check if we are still on the same volunteer or a new one
-        if current_volunteer != row['full_name']:
-            # Print total hours for the previous volunteer if not the first entry
-            if current_volunteer is not None:
-                pdf_canvas.drawString(80, y_position, f"Total Hours Volunteered: {total_hours}")
-                y_position -= 20
+    # Iterate over volunteers
+    for volunteer_name, info in volunteers.items():
+        # Volunteer name
+        volunteer_title = Paragraph(f"Volunteer: {volunteer_name}", styles['VolunteerName'])
+        flowables.append(volunteer_title)
 
-            # Reset for the new volunteer
-            current_volunteer = row['full_name']
-            total_hours = 0
-            y_position -= 40
-            pdf_canvas.setFont("Helvetica-Bold", 12)
-            pdf_canvas.drawString(80, y_position, f"Volunteer: {row['full_name']}")
-            y_position -= 20
-            pdf_canvas.setFont("Helvetica", 10)
-            pdf_canvas.drawString(80, y_position, "Event Name                 Status            Hours            Feedback")
-            y_position -= 20
+        # Check if the volunteer has participation history
+        if info['participations']:
+            # Table data and header
+            table_data = [['Event Name', 'Status', 'Hours', 'Feedback']]
+            # Add participation rows
+            for participation in info['participations']:
+                row = [
+                    participation['event_name'],
+                    participation['participation_status'],
+                    str(participation['hours_volunteered']),
+                    participation['feedback']
+                ]
+                table_data.append(row)
+            # Create table
+            participation_table = Table(table_data, colWidths=[150, 80, 50, 180])
+            # Style for table
+            table_style = TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ])
+            participation_table.setStyle(table_style)
+            flowables.append(participation_table)
+        else:
+            # No participation history
+            no_history = Paragraph("No participation history available.", styles['TableCell'])
+            flowables.append(no_history)
 
-        # Add details of each event if they have participation history, otherwise indicate no history
-        event_name = row['event_name'] if row['event_name'] else "No Events"
-        status = row['participation_status'] if row['participation_status'] else "N/A"
-        hours = row['hours_volunteered'] if row['hours_volunteered'] is not None else 0
-        feedback = row['feedback'] if row['feedback'] else "N/A"
-        
-        # Only add to total hours if they have actual history
-        if row['hours_volunteered'] is not None:
-            total_hours += hours
+        # Total hours
+        total_hours = Paragraph(f"Total Hours Volunteered: {info['total_hours']}", styles['TotalHours'])
+        flowables.append(total_hours)
 
-        pdf_canvas.drawString(80, y_position, f"{event_name:<25} {status:<15} {hours:<10} {feedback}")
-        y_position -= 20
+        # Separator
+        flowables.append(Spacer(1, 12))
+        hr = HRFlowable(width="100%", thickness=1, color=colors.grey)
+        flowables.append(hr)
+        flowables.append(Spacer(1, 12))
 
-        # Add page break if space is running out
-        if y_position < 50:
-            pdf_canvas.showPage()
-            y_position = 750
-
-    # Print the last volunteer's total hours
-    if current_volunteer is not None:
-        pdf_canvas.drawString(80, y_position, f"Total Hours Volunteered: {total_hours}")
-
-    pdf_canvas.save()
+    # Build the PDF document
+    doc.build(flowables)
 
     # Move PDF buffer to start
     pdf_buffer.seek(0)
 
-    return send_file(pdf_buffer, as_attachment=True, download_name="Volunteer_Participation_Report.pdf", mimetype='application/pdf')
+    # Return the PDF as a response
+    return send_file(
+        pdf_buffer, as_attachment=True,
+        download_name="Volunteer_Participation_Report.pdf",
+        mimetype='application/pdf'
+    )
 
 @app.route('/generate_csv_volunteer_report', methods=['GET'])
 def generate_csv_volunteer_report():
@@ -998,6 +1050,12 @@ def generate_csv_volunteer_report():
     )
 
 # Report Generation: Event Assignments PDF
+from flask import send_file
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+
 @app.route('/generate_event_assignments_report')
 def generate_event_assignments_report():
     # Query to fetch event details along with volunteer assignments
@@ -1015,71 +1073,103 @@ def generate_event_assignments_report():
         result = conn.execute(text(query)).mappings()
         data = [dict(row) for row in result]
 
+    # Process data to group volunteers under each event
+    events = {}
+    for row in data:
+        event_id = row['event_id']
+        if event_id not in events:
+            # Initialize event details
+            events[event_id] = {
+                'event_name': row['event_name'],
+                'event_description': row['event_description'],
+                'location': row['location'],
+                'required_skills': row['required_skills'],
+                'urgency': row['urgency'],
+                'event_date': row['event_date'],
+                'volunteers': []
+            }
+        # Append volunteer if assignment is active and not cancelled
+        if row['assignment_status'] == 'active' and row['assignment_cancelled'] == 0:
+            if row['volunteer_name']:
+                events[event_id]['volunteers'].append(row['volunteer_name'])
+
     # Initialize PDF document
     pdf_buffer = BytesIO()
-    pdf_canvas = canvas.Canvas(pdf_buffer, pagesize=letter)
-    pdf_canvas.setTitle("Event Details and Volunteer Assignments Report")
+    doc = SimpleDocTemplate(
+        pdf_buffer, pagesize=letter,
+        title="Event Details and Volunteer Assignments Report"
+    )
 
-    # Title
-    pdf_canvas.setFont("Helvetica-Bold", 16)
-    pdf_canvas.drawString(180, 750, "Event Details and Volunteer Assignments")
+    # Define styles
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(
+        name='EventTitle', fontSize=14, leading=16, spaceAfter=10,
+        spaceBefore=20, fontName='Helvetica-Bold'
+    ))
+    styles.add(ParagraphStyle(
+        name='EventDetail', fontSize=12, leading=14, spaceAfter=5
+    ))
+    styles.add(ParagraphStyle(
+        name='Volunteer', fontSize=11, leading=13, leftIndent=20
+    ))
+    styles.add(ParagraphStyle(
+        name='Separator', spaceBefore=10, spaceAfter=10
+    ))
 
-    # Set starting positions
-    y_position = 700
-    pdf_canvas.setFont("Helvetica", 10)
+    # Create flowables list
+    flowables = []
 
-    # Track the current event
-    current_event_id = None
+    # Add the main title
+    title = Paragraph("Event Details and Volunteer Assignments", styles['Title'])
+    flowables.append(title)
+    flowables.append(Spacer(1, 12))
 
-    for row in data:
-        # Check if we are still on the same event or a new one
-        if current_event_id != row['event_id']:
-            # Add space between events
-            if current_event_id is not None:
-                y_position -= 20
+    # Iterate over events
+    for event in events.values():
+        # Event title
+        event_title = Paragraph(f"Event: {event['event_name']}", styles['EventTitle'])
+        flowables.append(event_title)
 
-            # Print event details
-            current_event_id = row['event_id']
-            pdf_canvas.setFont("Helvetica-Bold", 12)
-            pdf_canvas.drawString(80, y_position, f"Event: {row['event_name']}")
-            y_position -= 20
+        # Event details
+        details = [
+            f"Description: {event['event_description']}",
+            f"Location: {event['location']}",
+            f"Required Skills: {event['required_skills']}",
+            f"Urgency: {event['urgency']}",
+            f"Date: {event['event_date']}"
+        ]
+        for detail in details:
+            p = Paragraph(detail, styles['EventDetail'])
+            flowables.append(p)
 
-            pdf_canvas.setFont("Helvetica", 10)
-            pdf_canvas.drawString(80, y_position, f"Description: {row['event_description']}")
-            y_position -= 20
-            pdf_canvas.drawString(80, y_position, f"Location: {row['location']}")
-            y_position -= 20
-            pdf_canvas.drawString(80, y_position, f"Required Skills: {row['required_skills']}")
-            y_position -= 20
-            pdf_canvas.drawString(80, y_position, f"Urgency: {row['urgency']}")
-            y_position -= 20
-            pdf_canvas.drawString(80, y_position, f"Date: {row['event_date']}")
-            y_position -= 20
-            pdf_canvas.drawString(80, y_position, "Assigned Volunteers:")
-            y_position -= 20
+        # Assigned volunteers
+        flowables.append(Paragraph("Assigned Volunteers:", styles['EventDetail']))
+        if event['volunteers']:
+            for volunteer in event['volunteers']:
+                p = Paragraph(f"• {volunteer}", styles['Volunteer'])
+                flowables.append(p)
+        else:
+            p = Paragraph("• No volunteers assigned", styles['Volunteer'])
+            flowables.append(p)
 
-        # Only display volunteers with active, non-cancelled assignments
-        if row['assignment_status'] == 'active' and row['assignment_cancelled'] == 0:
-            volunteer_name = row['volunteer_name'] if row['volunteer_name'] else "No volunteers assigned"
-            pdf_canvas.drawString(100, y_position, f"- {volunteer_name}")
-            y_position -= 20
+        # Add a separator between events
+        flowables.append(Spacer(1, 12))
+        flowables.append(Paragraph('<hr width="100%" color="grey"/>', styles['Separator']))
+        flowables.append(Spacer(1, 12))
 
-        # If no volunteers were found for the current event, indicate that
-        elif row['volunteer_name'] is None:
-            pdf_canvas.drawString(100, y_position, "- No volunteers assigned")
-            y_position -= 20
-
-        # Add page break if space is running out
-        if y_position < 50:
-            pdf_canvas.showPage()
-            y_position = 750
-
-    pdf_canvas.save()
+    # Build the PDF document
+    doc.build(flowables)
 
     # Move PDF buffer to start
     pdf_buffer.seek(0)
 
-    return send_file(pdf_buffer, as_attachment=True, download_name="Event_Assignments_Report.pdf", mimetype='application/pdf')
+    # Return the PDF as a response
+    return send_file(
+        pdf_buffer, as_attachment=True,
+        download_name="Event_Assignments_Report.pdf",
+        mimetype='application/pdf'
+    )
+
 @app.route('/generate_csv_assignments_report', methods=['GET'])
 def generate_csv_assignments_report():
     query = """
